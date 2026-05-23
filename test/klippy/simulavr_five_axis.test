@@ -1,0 +1,9 @@
+DICTIONARY atmega644p.dict
+CONFIG ../../config/generic-simulavr.cfg
+
+STATUS
+M105
+M114
+G28
+G1 X10 A90
+M114

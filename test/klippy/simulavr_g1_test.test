@@ -1,0 +1,6 @@
+DICTIONARY atmega644p.dict
+CONFIG ../../config/generic-simulavr.cfg
+
+G28
+G1 X10 F600
+M400

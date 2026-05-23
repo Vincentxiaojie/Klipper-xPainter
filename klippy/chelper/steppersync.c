@@ -13,6 +13,7 @@
 
 #include <pthread.h> // pthread_mutex_lock
 #include <stddef.h> // offsetof
+#include <stdio.h> // fprintf
 #include <stdlib.h> // malloc
 #include <string.h> // memset
 #include "compiler.h" // __visible

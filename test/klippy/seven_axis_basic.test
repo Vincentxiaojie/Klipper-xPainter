@@ -1,0 +1,37 @@
+# Seven-axis basic test (XYZABCE)
+# Smoke test: verifies all 7 axes can coexist and move without errors
+# XYZ = linear axes, ABC = rotary axes, E = extruder
+
+DICTIONARY linuxprocess.dict
+CONFIG five_axis.cfg
+
+# Home XYZ (ABC axes are continuous rotation, no endstop seeking needed)
+G28 X Y Z
+
+# Reset all positions to zero
+G92 X0 Y0 Z0 A0 B0 C0 E0
+
+# Query initial state
+STATUS
+M105
+M114
+GET_POSITION
+
+# Move each axis individually
+G1 X100 F6000
+M114
+G1 Y50 F6000
+M114
+G1 Z10 F1500
+M114
+G1 A90 F6000
+M114
+G1 B90 F6000
+M114
+G1 C90 F6000
+M114
+G1 E10 F1500
+M114
+
+# Query final state
+GET_POSITION

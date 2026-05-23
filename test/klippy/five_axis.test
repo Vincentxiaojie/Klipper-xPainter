@@ -1,0 +1,10 @@
+# Five-axis kinematics test (XYZABC)
+# Tests multi-axis cartesian_abc kinematics
+
+DICTIONARY linuxprocess.dict
+CONFIG five_axis.cfg
+
+# Just test status commands (no homing)
+STATUS
+M105
+M114

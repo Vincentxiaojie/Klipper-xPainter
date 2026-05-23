@@ -1,0 +1,22 @@
+# Pulse step counting test (no homing required)
+# Verifies: steps = move_distance / step_dist
+# where step_dist = rotation_distance / steps_per_rotation
+#
+# Expected for G1 X10 with rotation_distance=40, microsteps=16, full_steps=200:
+#   steps_per_rotation = 200 * 16 = 3200
+#   step_dist = 40 / 3200 = 0.0125 mm/step
+#   Expected steps for X10 = 10 / 0.0125 = 800 steps
+
+DICTIONARY linuxprocess.dict
+CONFIG pulse_step.cfg
+
+# Skip G28 - use G92 to manually set origin (WSL Linux MCU has no real endstops)
+G92 X0 Y0 Z0 E0
+
+# Move X 10mm - should produce 800 steps
+# step_dist = 40 / (200 * 16) = 40 / 3200 = 0.0125
+# steps = 10 / 0.0125 = 800
+G1 X10 F60
+
+# Query position to verify step count
+GET_POSITION

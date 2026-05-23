@@ -179,6 +179,8 @@ class Homing:
     def _fill_coord(self, coord):
         # Fill in any None entries in 'coord' with current toolhead position
         thcoord = list(self.toolhead.get_position())
+        while len(thcoord) < len(coord):
+            thcoord.append(0.)
         for i in range(len(coord)):
             if coord[i] is not None:
                 thcoord[i] = coord[i]
@@ -189,8 +191,11 @@ class Homing:
         # Notify of upcoming homing operation
         self.printer.send_event("homing:home_rails_begin", self, rails)
         # Alter kinematics class to think printer is at forcepos
-        force_axes = [axis for axis in range(3) if forcepos[axis] is not None]
-        homing_axes = "".join(["xyz"[i] for i in force_axes])
+        axis_names = "xyzabc"
+        force_axes = [axis for axis in range(len(forcepos))
+                      if forcepos[axis] is not None]
+        homing_axes = "".join([axis_names[i] if i < len(axis_names) else ""
+                               for i in force_axes])
         startpos = self._fill_coord(forcepos)
         homepos = self._fill_coord(movepos)
         self.toolhead.set_position(startpos, homing_axes=homing_axes)
@@ -205,8 +210,8 @@ class Homing:
             startpos = self._fill_coord(forcepos)
             homepos = self._fill_coord(movepos)
             axes_d = [hp - sp for hp, sp in zip(homepos, startpos)]
-            move_d = math.sqrt(sum([d*d for d in axes_d[:3]]))
-            retract_r = min(1., hi.retract_dist / move_d)
+            move_d = math.sqrt(sum([d*d for d in axes_d]))
+            retract_r = min(1., hi.retract_dist / move_d) if move_d else 0.
             retractpos = [hp - ad * retract_r
                           for hp, ad in zip(homepos, axes_d)]
             self.toolhead.move(retractpos, hi.retract_speed)
@@ -236,9 +241,10 @@ class Homing:
             newpos = kin.calc_position(kin_spos)
             for axis in force_axes:
                 if newpos[axis] is None:
+                    aname = axis_names[axis] if axis < len(axis_names) else str(axis)
                     raise self.printer.command_error(
                             "Cannot determine position of toolhead on "
-                            "axis %s after homing" % "xyz"[axis])
+                            "axis %s after homing" % aname)
                 homepos[axis] = newpos[axis]
             self.toolhead.set_position(homepos)
 
@@ -278,7 +284,7 @@ class PrinterHoming:
     def cmd_G28(self, gcmd):
         # Move to origin
         axes = []
-        for pos, axis in enumerate('XYZ'):
+        for pos, axis in enumerate('XYZABC'):
             if gcmd.get(axis, None) is not None:
                 axes.append(pos)
         if not axes:

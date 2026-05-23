@@ -1,0 +1,5 @@
+DICTIONARY atmega644p.dict
+CONFIG ../../config/generic-simulavr.cfg
+
+SET_KINEMATIC_POSITION X=0 Y=0 Z=0
+FORCE_MOVE STEPPER=basic_stepper DISTANCE=10 SPEED=50 ACCEL=100

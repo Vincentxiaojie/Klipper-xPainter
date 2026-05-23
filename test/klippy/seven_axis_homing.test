@@ -1,0 +1,42 @@
+# Seven-axis homing test (XYZABCE)
+# Tests G28 homing for XYZ individually and ABC position reset
+# Tests G92 position setting for all axes
+
+DICTIONARY linuxprocess.dict
+CONFIG five_axis.cfg
+
+# --- Test 1: Home X only ---
+G28 X
+M114
+GET_POSITION
+
+# --- Test 2: Home Y only ---
+G28 Y
+M114
+
+# --- Test 3: Home Z only ---
+G28 Z
+M114
+
+# --- Test 4: Home all XYZ ---
+G28
+M114
+
+# --- Test 5: Home with explicit XYZ ---
+G28 X Y Z
+G92 X0 Y0 Z0 A0 B0 C0 E0
+M114
+
+# --- Test 6: G92 zero all axes (no homing) ---
+G92 X0 Y0 Z0 A0 B0 C0 E0
+M114
+
+# --- Test 7: G92 set specific axis values ---
+G92 A50 B50 C50
+M114
+
+# --- Test 8: G92 no args (reset all to current position) ---
+G92
+M114
+
+GET_POSITION

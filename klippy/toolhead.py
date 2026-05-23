@@ -280,12 +280,25 @@ class ToolHead:
         next_move_time = self.print_time
         with self.reactor.assert_no_pause():
             for move in moves:
+                # For ABC-only rotational moves, calculate move_d based on rotational axes
+                is_abc_only = (all(d == 0. for d in move.axes_d[:3])
+                               and len(move.axes_d) > 4
+                               and any(move.axes_d[4:7]))
+                if is_abc_only:
+                    # This is a pure rotational axis move - still queue it
+                    move.is_kinematic_move = True
                 if move.is_kinematic_move:
                     self.trapq_append(
                         self.trapq, next_move_time,
                         move.accel_t, move.cruise_t, move.decel_t,
                         move.start_pos[0], move.start_pos[1], move.start_pos[2],
+                        move.start_pos[4] if len(move.start_pos) > 4 else 0.,
+                        move.start_pos[5] if len(move.start_pos) > 5 else 0.,
+                        move.start_pos[6] if len(move.start_pos) > 6 else 0.,
                         move.axes_r[0], move.axes_r[1], move.axes_r[2],
+                        move.axes_r[4] if len(move.axes_r) > 4 else 0.,
+                        move.axes_r[5] if len(move.axes_r) > 5 else 0.,
+                        move.axes_r[6] if len(move.axes_r) > 6 else 0.,
                         move.start_v, move.cruise_v, move.accel)
                 for e_index, ea in enumerate(self.extra_axes):
                     if move.axes_d[e_index + 3]:
@@ -384,8 +397,16 @@ class ToolHead:
         self.flush_step_generation()
         ffi_main, ffi_lib = chelper.get_ffi()
         ffi_lib.trapq_set_position(self.trapq, self.print_time,
-                                   newpos[0], newpos[1], newpos[2])
+                                   newpos[0], newpos[1], newpos[2],
+                                   newpos[4] if len(newpos) > 4 else 0.,
+                                   newpos[5] if len(newpos) > 5 else 0.,
+                                   newpos[6] if len(newpos) > 6 else 0.)
         self.commanded_pos[:3] = newpos[:3]
+        while len(self.commanded_pos) < len(newpos):
+            self.commanded_pos.append(0.)
+        for i in range(3, len(newpos)):
+            if i < len(self.commanded_pos):
+                self.commanded_pos[i] = newpos[i]
         self.kin.set_position(newpos, homing_axes)
         self.printer.send_event("toolhead:set_position")
     def limit_next_junction_speed(self, speed):
@@ -393,15 +414,26 @@ class ToolHead:
         if last_move is not None:
             last_move.limit_next_junction_speed(speed)
     def move(self, newpos, speed):
+        # Ensure commanded_pos is long enough for all axes in newpos
+        while len(self.commanded_pos) < len(newpos):
+            self.commanded_pos.append(0.0)
         move = Move(self, self.commanded_pos, newpos, speed)
         if not move.move_d:
             return
-        if move.is_kinematic_move:
+        # Check if this is a pure rotational axis move (ABC only, no XYZ)
+        is_abc_only = (all(d == 0. for d in move.axes_d[:3])
+                       and len(move.axes_d) > 4
+                       and any(move.axes_d[4:7]))
+        if move.is_kinematic_move or is_abc_only:
             self.kin.check_move(move)
         for e_index, ea in enumerate(self.extra_axes):
             if move.axes_d[e_index + 3]:
                 ea.check_move(move, e_index + 3)
-        self.commanded_pos[:] = move.end_pos
+        # Preserve existing extra axes when updating commanded_pos
+        num_new = max(len(move.end_pos), len(self.commanded_pos))
+        while len(self.commanded_pos) < num_new:
+            self.commanded_pos.append(0.0)
+        self.commanded_pos[:len(move.end_pos)] = list(move.end_pos)
         want_flush = self.lookahead.add_move(move)
         if want_flush:
             self._process_lookahead(lazy=True)
@@ -469,15 +501,23 @@ class ToolHead:
                 self.trapq, end_time,
                 move.accel_t, move.cruise_t, move.decel_t,
                 move.start_pos[0], move.start_pos[1], move.start_pos[2],
+                move.start_pos[4] if len(move.start_pos) > 4 else 0.,
+                move.start_pos[5] if len(move.start_pos) > 5 else 0.,
+                move.start_pos[6] if len(move.start_pos) > 6 else 0.,
                 move.axes_r[0], move.axes_r[1], move.axes_r[2],
+                move.axes_r[4] if len(move.axes_r) > 4 else 0.,
+                move.axes_r[5] if len(move.axes_r) > 5 else 0.,
+                move.axes_r[6] if len(move.axes_r) > 6 else 0.,
                 move.start_v, move.cruise_v, move.accel)
             end_time = end_time + move.accel_t + move.cruise_t + move.decel_t
         self.lookahead.reset()
         return start_time, end_time
     def drip_move(self, newpos, speed, drip_completion):
         # Create and verify move is valid
-        newpos = newpos[:3] + self.commanded_pos[3:]
-        move = Move(self, self.commanded_pos, newpos, speed)
+        np = list(newpos)
+        while len(np) < len(self.commanded_pos):
+            np.append(self.commanded_pos[len(np)])
+        move = Move(self, self.commanded_pos, np, speed)
         if move.move_d:
             self.kin.check_move(move)
         # Make sure stepper movement doesn't start before nominal start time

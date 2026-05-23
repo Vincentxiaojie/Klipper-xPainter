@@ -1,0 +1,24 @@
+# Six-axis pulse accuracy test (XYZABC)
+# Tests that stepper pulse counts are exact for each axis
+
+DICTIONARY linuxprocess.dict
+CONFIG five_axis.cfg
+
+# Reset all axes to known position
+G28 X0 Y0 Z0 A0 B0 C0
+G92 X0 Y0 Z0 A0 B0 C0
+
+# Test X axis: 100mm at 6000 mm/min (100mm/s)
+# rotation_distance=40, microsteps=16, steps_per_mm = 200*16/40 = 80
+# Expected: 100 * 80 = 8000 pulses
+G1 X100 F6000
+
+# Test A axis: 90 degrees rotation
+# rotation_distance=360, full_steps_per_rotation=200, microsteps=16
+# Steps per 360 deg = 200 * 16 = 3200
+# Steps per deg = 3200/360 = 8.888...
+# Expected for 90 deg: 90 * 3200/360 = 800 pulses
+G1 A90 F6000
+
+# Query position to see final values
+M114

@@ -1,0 +1,70 @@
+# RTCP pulse accuracy test — BC configuration (XYZ + B + C)
+# Verifies stepper step counts for rotary RTCP compensation
+#
+# Step distances (rtcp.cfg):
+#   X, Y: rotation_distance=40, microsteps=16, step_dist=0.0125 mm/step
+#   Z:    rotation_distance=8,  microsteps=16, step_dist=0.0025 mm/step
+#   B, C: rotation_distance=360, full_steps_per_rotation=200, microsteps=16
+#         step_dist = 360/3200 = 0.1125 deg/step
+#
+# BC RTCP: X_pivot = X_tip + L*sin(B)*cos(C)
+#           Y_pivot = Y_tip + L*sin(B)*sin(C)
+#           Z_pivot = Z_tip + L*cos(B)
+# tool_length = 80
+
+DICTIONARY linuxprocess.dict
+CONFIG rtcp.cfg
+
+# Home all axes → pivot=(0,0,0,0,0), tip=(0,0,-80,0,0)
+G28 X Y Z B C
+
+# Set display Z=80 (tip=-80 physical). Then raise to safe height.
+G92 X0 Y0 Z80 B0 C0
+G1 X100 Z240 F6000
+# tip Z=240+(-160)=80 physical, pivot Z=80+80=160
+G92 X100 Y0 Z80 B0 C0
+# Now: tip=(100,0,80,0,0), pivot=(100,0,160,0,0)
+
+# === Test 1: B=90 C=0 (笔前倾90°) ===
+# Tip: (100,0,80,0,0) → (100,0,80,90,0)
+# Pivot: X=100+80*sin90*cos0=180, Z=80+80*cos90=80
+# Δ: X=80, Z=-80, B=90
+# Steps: X=6400, Z=-32000, B=800
+G1 B90 F6000
+M114
+
+# === Test 2: Return B=0 ===
+# Δ: X=-80, Z=80, B=-90
+# Steps: X=-6400, Z=32000, B=-800
+G1 B0 F6000
+M114
+
+# === Test 3: B=90 C=90 (笔右倾90°) ===
+# Tip: (100,0,80,0,0) → (100,0,80,90,90)
+# Pivot: X=100+80*0=100, Y=0+80*1*1=80, Z=80+0=80
+# Δ: Y=80, Z=-80, B=90, C=90
+# Steps: Y=6400, Z=-32000, B=800, C=800
+G1 B90 C90 F6000
+M114
+
+# === Test 4: B=90 C=180 (笔后倾, 从 B=90 C=90) ===
+# Start: tip=(100,0,80,90,90), pivot=(100,80,80,90,90)
+# Target: tip=(100,0,80,90,180)
+# Pivot: X=100+80*1*(-1)=20, Y=0+80*1*0=0, Z=80+0=80
+# Δ: X=-80, Y=-80, Z=0, B=0, C=90
+# Steps: X=-6400, Y=-6400, C=800
+G1 B90 C180 F6000
+M114
+
+# === Test 5: Return to base then 5-axis synchronized move ===
+G1 B0 C0 F6000
+G92 X100 Y0 Z80 B0 C0
+# Tip=(100,0,80,0,0), Pivot=(100,0,160,0,0)  [same as after Test 2]
+# Target: tip=(150,30,100,90,0)
+# Pivot: X=150+80*sin90*cos0=230, Y=30+80*sin90*sin0=30, Z=100+80*cos90=100
+# Δ: X=130, Y=30, Z=-60, B=90
+# Steps: X=10400, Y=2400, Z=-24000, B=800
+G1 X150 Y30 Z100 B90 F6000
+M114
+
+GET_POSITION

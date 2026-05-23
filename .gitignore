@@ -1,6 +1,44 @@
-out
+# Klipper-xPainter .gitignore
+
+# 编译产物
+klippy/chelper/c_helper.so
+*.o
 *.so
+
+# Python
+__pycache__/
 *.pyc
+*.pyo
+*.egg-info/
+
+# 测试数据字典 (大文件，单独下载)
+dict/
+out/
+
+# Kconfig 输出
 .config
 .config.old
-klippy/.version
+
+# 日志
+*.log
+/tmp/
+
+# 编辑器
+*.swp
+*.swo
+*~
+.vscode/
+.idea/
+
+# 真机测试结果
+real_machine_test/test_results_*/
+
+# Claude Code 内部文件
+.claude/
+
+# 测试产物
+_test_.log.*
+*.vcd
+
+# dict 是外部数据集的 symlink
+dict
