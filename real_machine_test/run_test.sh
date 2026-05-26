@@ -18,7 +18,7 @@
 set -e
 
 SCRIPT_DIR="$(cd "$(dirname "$0")" && pwd)"
-KLIPPY_DIR="$HOME/klipper"
+KLIPPY_DIR="$HOME/Klipper-xPainter"
 KLIPPY="$KLIPPY_DIR/klippy/klippy.py"
 SEND_GCODE="$SCRIPT_DIR/send_gcode.py"
 PRINTER_CFG="$SCRIPT_DIR/printer.cfg"
