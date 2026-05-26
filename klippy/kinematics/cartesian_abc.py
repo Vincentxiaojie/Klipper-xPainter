@@ -97,11 +97,16 @@ class CartABCKinematics:
                 forcepos[pos_idx] += multiplier * (position_max - hi.position_endstop)
             try:
                 homing_state.home_rails([rail], forcepos, homepos)
-                # Apply endstop offset for trigger-vs-true-zero compensation
+                # Apply endstop offset: physically move from trigger
+                # point to true zero, then set coordinate.
                 if self.endstop_offset != 0.:
                     toolhead = self.printer.lookup_object('toolhead')
+                    pos = list(toolhead.get_position())
+                    pos[pos_idx] -= self.endstop_offset
+                    toolhead.move(pos, hi.homing_speed)
+                    toolhead.wait_moves()
                     th_pos = list(toolhead.get_position())
-                    th_pos[pos_idx] += self.endstop_offset
+                    th_pos[pos_idx] = hi.position_endstop
                     toolhead.set_position(th_pos)
                 return
             except self.printer.command_error as e:

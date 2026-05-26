@@ -127,12 +127,23 @@ class CartesianRTCPKinematics:
                 forcepos[pos_idx] += multiplier * (position_max - hi.position_endstop)
             try:
                 homing_state.home_rails([rail], forcepos, homepos)
-                # Apply endstop offset to compensate for trigger-point
-                # vs true-zero mechanical offset (e.g. screw head width).
+                # Apply endstop offset: physically move from trigger
+                # point to true zero, then set coordinate.
                 if self.endstop_offset != 0.:
                     toolhead = self.printer.lookup_object('toolhead')
+                    # Temporarily disable RTCP so the post-homing
+                    # jog moves only the target rotary axis.
+                    saved_L = self.tool_length
+                    self.tool_length = 0.
+                    try:
+                        pos = list(toolhead.get_position())
+                        pos[pos_idx] -= self.endstop_offset
+                        toolhead.move(pos, hi.homing_speed)
+                        toolhead.wait_moves()
+                    finally:
+                        self.tool_length = saved_L
                     th_pos = list(toolhead.get_position())
-                    th_pos[pos_idx] += self.endstop_offset
+                    th_pos[pos_idx] = hi.position_endstop
                     toolhead.set_position(th_pos)
                 return
             except self.printer.command_error as e:
