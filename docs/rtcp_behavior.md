@@ -164,17 +164,19 @@ FORCE_MOVE STEPPER=stepper_c DISTANCE=5 VELOCITY=100   # C 轴电机旋转 5°
 
 第一次归零使用智能方向（1.5x 行程探索角度）。如果失败（如 `FORCE_MOVE` 后 commanded position 与实际物理位置不符），自动反向重试（2.5x 探索角度）。2.5x 倍数保证即使第一次将轴推远了，反向重试也能跨越 endstop。
 
-### homing_endstop_phase_width 微动宽度补偿
+### homing_endstop_offset 归零偏移补偿
 
-物理 microswitch 端的螺丝帽有一定宽度，钢珠碰到前沿时触发（A 点），越过螺丝帽后沿时释放（B 点），真正的零点在 A 和 B 的正中间。
+归零时 endstop 在微动螺丝帽前沿触发，真正的零点在螺丝帽中心（或其他参考位置），两者间存在固定偏移。
 
 在 `[printer]` 段配置：
 
 ```
-homing_endstop_phase_width: 0.5   # 螺丝帽宽度 (°)，默认 0 不补偿
+homing_endstop_offset: 5    # 归零后偏移量（°），正值=正方向，负值=负方向，0=不补偿
 ```
 
-归零成功后自动向内偏移半个宽度（仅改坐标系不产生物理运动），使 `commanded=0` 对应真实物理零点。
+**校准方法**：`G28 C` 归零到触发前沿 → `G1` 微调找到视觉居中 → 看 `M114` 的轴值 → 填入 `homing_endstop_offset`。
+
+归零成功后自动用 `set_position` 施加偏移（仅改坐标系不产生物理运动），后续所有 G-code 坐标自动以真实零点为参考。
 
 ## `_adjust_move_d_for_rotary` 速度模型
 

@@ -31,8 +31,7 @@ class CartABCKinematics:
         self.max_z_accel = config.getfloat('max_z_accel', max_accel,
                                            above=0., maxval=max_accel)
         self.limits = [(1.0, -1.0)] * len(self.axes)
-        self.phase_width = config.getfloat('homing_endstop_phase_width', 0.,
-                                           minval=0.)
+        self.endstop_offset = config.getfloat('homing_endstop_offset', 0.)
         # Map rail index to commanded_pos index (E is at commanded_pos[3])
         self._pos_idx = []
         for axis_name in self.axes:
@@ -98,13 +97,11 @@ class CartABCKinematics:
                 forcepos[pos_idx] += multiplier * (position_max - hi.position_endstop)
             try:
                 homing_state.home_rails([rail], forcepos, homepos)
-                # Apply endstop phase width compensation
-                if self.phase_width > 0.:
+                # Apply endstop offset for trigger-vs-true-zero compensation
+                if self.endstop_offset != 0.:
                     toolhead = self.printer.lookup_object('toolhead')
-                    pos_offset = (-self.phase_width / 2. if effective_dir
-                                  else self.phase_width / 2.)
                     th_pos = list(toolhead.get_position())
-                    th_pos[pos_idx] += pos_offset
+                    th_pos[pos_idx] += self.endstop_offset
                     toolhead.set_position(th_pos)
                 return
             except self.printer.command_error as e:

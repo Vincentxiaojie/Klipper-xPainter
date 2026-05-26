@@ -139,6 +139,37 @@ do_status() {
 }
 
 # ============================================================
+# 重启 Klipper (释放电机 + 重新加载配置)
+# ============================================================
+do_restart() {
+    banner "重启 Klipper"
+
+    if [ ! -e "$PORT" ]; then
+        error "串口 $PORT 不存在，请先启动 Klipper: $0 start"
+        exit 1
+    fi
+
+    info "发送 RESTART 命令..."
+    $PYTHON "$SEND_GCODE" -c "RESTART"
+
+    # 等待 Klipper 重启
+    info "等待 Klipper 重启..."
+    sleep 3
+
+    # 等待 PTY 重新创建
+    for i in $(seq 1 30); do
+        if [ -e "$PORT" ]; then
+            info "Klipper 已重启 (端口: $PORT)"
+            info "日志文件: $LOG_FILE"
+            exit 0
+        fi
+        sleep 1
+    done
+
+    warn "Klipper 重启超时，请检查日志: $LOG_FILE"
+}
+
+# ============================================================
 # 发送 G-code
 # ============================================================
 do_send() {
@@ -314,6 +345,7 @@ EOF
 case "${1:-}" in
     start)   do_start ;;
     stop)    do_stop ;;
+    restart) do_restart ;;
     status)  do_status ;;
     send)    shift; do_send "$@" ;;
     cmd)     do_cmd "$2" ;;
@@ -326,6 +358,7 @@ case "${1:-}" in
         echo "命令:"
         echo "  start                   启动 Klipper 后台运行"
         echo "  stop                    停止 Klipper"
+        echo "  restart                 重启 Klipper (释放电机+重载配置)"
         echo "  status                  查看运行状态"
         echo "  send <file>             发送 G-code 文件"
         echo "  send -i <file>          交互模式逐条发送 G-code"
