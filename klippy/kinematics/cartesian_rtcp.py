@@ -101,7 +101,18 @@ class CartesianRTCPKinematics:
         forcepos = list(homepos)
         homepos[pos_idx] = hi.position_endstop
         forcepos[pos_idx] = homepos[pos_idx]
-        if hi.positive_dir:
+        # Determine homing direction based on current position vs endstop.
+        # For rotary axes with endstop in the middle of range,
+        # this auto-selects the direction that points toward the endstop.
+        # For linear axes (endstop at range limit), this matches static config.
+        curpos = rail.get_commanded_position()
+        if curpos > hi.position_endstop:
+            effective_dir = False  # home negative (toward endstop)
+        elif curpos < hi.position_endstop:
+            effective_dir = True   # home positive (toward endstop)
+        else:
+            effective_dir = hi.positive_dir  # at endstop, use config default
+        if effective_dir:
             forcepos[pos_idx] -= 1.5 * (hi.position_endstop - position_min)
         else:
             forcepos[pos_idx] += 1.5 * (position_max - hi.position_endstop)
