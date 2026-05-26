@@ -98,25 +98,39 @@ class CartesianRTCPKinematics:
         position_min, position_max = rail.get_range()
         hi = rail.get_homing_info()
         homepos = [None] * 7
-        forcepos = list(homepos)
         homepos[pos_idx] = hi.position_endstop
-        forcepos[pos_idx] = homepos[pos_idx]
-        # Determine homing direction based on current position vs endstop.
+        # Determine primary direction from commanded position.
         # For rotary axes with endstop in the middle of range,
         # this auto-selects the direction that points toward the endstop.
         # For linear axes (endstop at range limit), this matches static config.
         curpos = rail.get_commanded_position()
         if curpos > hi.position_endstop:
-            effective_dir = False  # home negative (toward endstop)
+            first_dir = False  # home negative (toward endstop)
         elif curpos < hi.position_endstop:
-            effective_dir = True   # home positive (toward endstop)
+            first_dir = True   # home positive (toward endstop)
         else:
-            effective_dir = hi.positive_dir  # at endstop, use config default
-        if effective_dir:
-            forcepos[pos_idx] -= 1.5 * (hi.position_endstop - position_min)
-        else:
-            forcepos[pos_idx] += 1.5 * (position_max - hi.position_endstop)
-        homing_state.home_rails([rail], forcepos, homepos)
+            first_dir = hi.positive_dir  # at endstop, use config default
+        # Two attempts: primary direction (1.5x), then opposite (2.5x).
+        # The larger multiplier on retry guarantees endstop coverage even
+        # if the first attempt pushed the axis the wrong way (e.g. after
+        # FORCE_MOVE when commanded position doesn't match physical).
+        second_dir = not first_dir
+        attempts = [(first_dir, 1.5), (second_dir, 2.5)]
+        last_error = None
+        for effective_dir, multiplier in attempts:
+            forcepos = list(homepos)
+            forcepos[pos_idx] = homepos[pos_idx]
+            if effective_dir:
+                forcepos[pos_idx] -= multiplier * (hi.position_endstop - position_min)
+            else:
+                forcepos[pos_idx] += multiplier * (position_max - hi.position_endstop)
+            try:
+                homing_state.home_rails([rail], forcepos, homepos)
+                return
+            except self.printer.command_error as e:
+                last_error = e
+                continue
+        raise last_error
 
     def home(self, homing_state):
         for axis in homing_state.get_axes():
