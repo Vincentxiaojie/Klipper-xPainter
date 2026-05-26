@@ -140,8 +140,8 @@ class GCodeDispatch:
             self._build_status_commands()
             return old_cmd
         if cmd in self.ready_gcode_handlers:
-            raise self.printer.config_error(
-                "gcode command %s already registered" % (cmd,))
+            logging.debug("gcode command %s overridden", cmd)
+            del self.ready_gcode_handlers[cmd]
         if not self.is_traditional_gcode(cmd):
             if (cmd.upper() != cmd or not cmd.replace('_', 'A').isalnum()
                 or cmd[0].isdigit() or cmd[1:2].isdigit()):

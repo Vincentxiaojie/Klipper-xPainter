@@ -1,0 +1,13 @@
+# Tests for gcode_macro overriding built-in commands (M18/M84)
+DICTIONARY atmega2560.dict
+CONFIG macro_override.cfg
+
+# Verify the macro override doesn't crash Klipper
+TEST_MACRO_OVERRIDE
+
+# Direct M18/M84 commands should work via the macros
+M18
+M84
+
+# Restart command (must be last in test)
+RESTART
