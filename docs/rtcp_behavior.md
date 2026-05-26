@@ -148,6 +148,34 @@ FORCE_MOVE STEPPER=stepper_c DISTANCE=5 VELOCITY=100   # C 轴电机旋转 5°
 
 如果 tool_length 可通过 G-code 动态修改，设 L=0 可关闭 RTCP 补偿，使 `G1 B` / `G1 C` 仅移动旋转轴。
 
+## 旋转轴智能归零 (G28 B/C)
+
+### 智能方向检测
+
+归零方向不再仅依赖静态的 `homing_positive_dir` 配置，而是根据当前轴位置自动判断：
+
+- `当前位置 > endstop` → 向负方向归零（朝 endstop 靠近）
+- `当前位置 < endstop` → 向正方向归零（朝 endstop 靠近）
+- `当前位置 == endstop` → 回退到 `homing_positive_dir` 配置值
+
+对标准线性轴（endstop 在行程极限位置），此逻辑自动退化为与静态配置相同的行为。
+
+### 重试机制
+
+第一次归零使用智能方向（1.5x 行程探索角度）。如果失败（如 `FORCE_MOVE` 后 commanded position 与实际物理位置不符），自动反向重试（2.5x 探索角度）。2.5x 倍数保证即使第一次将轴推远了，反向重试也能跨越 endstop。
+
+### homing_endstop_phase_width 微动宽度补偿
+
+物理 microswitch 端的螺丝帽有一定宽度，钢珠碰到前沿时触发（A 点），越过螺丝帽后沿时释放（B 点），真正的零点在 A 和 B 的正中间。
+
+在 `[printer]` 段配置：
+
+```
+homing_endstop_phase_width: 0.5   # 螺丝帽宽度 (°)，默认 0 不补偿
+```
+
+归零成功后自动向内偏移半个宽度（仅改坐标系不产生物理运动），使 `commanded=0` 对应真实物理零点。
+
 ## `_adjust_move_d_for_rotary` 速度模型
 
 RTCP 旋转轴专用速度调整：当 B/C 旋转导致笔尖弧线移动时，即使 TIP 空间 XYZ 坐标不变，笔尖实际走过的弧长为 L · Δθ_rad。此方法：
