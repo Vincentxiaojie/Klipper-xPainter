@@ -32,7 +32,7 @@ class CartABCKinematics:
                                            above=0., maxval=max_accel)
         self.limits = [(1.0, -1.0)] * len(self.axes)
         self.phase_width = config.getfloat('homing_endstop_phase_width', 0.,
-                                           above=0.)
+                                           minval=0.)
         # Map rail index to commanded_pos index (E is at commanded_pos[3])
         self._pos_idx = []
         for axis_name in self.axes:
