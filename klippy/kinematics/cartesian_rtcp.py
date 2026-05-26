@@ -132,7 +132,7 @@ class CartesianRTCPKinematics:
     def _adjust_move_d_for_rotary(self, move):
         L = self.tool_length
         if not L:
-            return
+            return False
         # Determine rotary axis indices based on config
         if self.rotary_config == 'bc':
             rotary_idx = [5, 6]  # B, C in commanded_pos
@@ -146,16 +146,21 @@ class CartesianRTCPKinematics:
         # Tip-space XYZ displacement
         tip_axes_d = [ep - sp for sp, ep in zip(start_tip, end_tip)]
         tip_xyz_d2 = sum(d*d for d in tip_axes_d[:3])
+        # Determine if tip-space move is ABC-only (no XYZ movement)
+        is_tip_abc_only = (tip_xyz_d2 < 1e-12
+                           and any(abs(tip_axes_d[idx]) > 1e-9
+                                   for idx in rotary_idx
+                                   if idx < len(tip_axes_d)))
         # Rotary axes contribution to tip arc length: L * Δθ_rad
         rotary_d2 = 0.
         for idx in rotary_idx:
             if len(tip_axes_d) > idx and tip_axes_d[idx]:
                 rotary_d2 += (L * math.radians(tip_axes_d[idx])) ** 2
         if rotary_d2 <= 0.:
-            return
+            return is_tip_abc_only
         effective_d = math.sqrt(tip_xyz_d2 + rotary_d2)
         if effective_d <= move.move_d:
-            return
+            return is_tip_abc_only
         # Scale move budgets to reflect true tip path length
         ratio = effective_d / move.move_d
         move.move_d = effective_d
@@ -165,16 +170,32 @@ class CartesianRTCPKinematics:
         # Recompute direction ratios for trapq step generation
         inv_move_d = 1. / effective_d
         move.axes_r = [d * inv_move_d for d in move.axes_d]
+        return is_tip_abc_only
 
     def check_move(self, move):
-        # Adjust move_d for rotary axis contribution to tip path
-        self._adjust_move_d_for_rotary(move)
+        # Adjust move_d for rotary axis contribution to tip path.
+        # Also returns whether the tip-space move is ABC-only.
+        is_tip_abc_only = self._adjust_move_d_for_rotary(move)
         # Move is already in PIVOT space (transformed by gcode_move transform)
         limits = self.limits
         xpos, ypos = move.end_pos[:2]
         abc_movement = (len(move.axes_d) > 4
                         and any(d != 0. for d in move.axes_d[4:7]))
         is_abc_only = all(d == 0. for d in move.axes_d[:3]) and abc_movement
+        if is_tip_abc_only:
+            # Tip-space pure rotary: XYZ pivot movement is RTCP internal.
+            # Skip XYZ bounds checks, only validate rotary axis ranges.
+            for i in range(3, len(self.axes)):
+                pos_idx = self._pos_idx[i]
+                if pos_idx >= len(move.axes_d):
+                    break
+                if (move.axes_d[pos_idx]
+                    and (move.end_pos[pos_idx] < limits[i][0]
+                         or move.end_pos[pos_idx] > limits[i][1])):
+                    if limits[i][0] > limits[i][1]:
+                        continue
+                    raise move.move_error()
+            return
         if (xpos < limits[0][0] or xpos > limits[0][1]
             or ypos < limits[1][0] or ypos > limits[1][1]):
             self._check_endstops(move)
