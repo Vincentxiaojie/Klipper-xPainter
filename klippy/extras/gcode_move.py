@@ -127,7 +127,7 @@ class GCodeMove:
             self.last_position = new_pos
     def _update_extra_axes(self):
         toolhead = self.printer.lookup_object('toolhead')
-        axis_map = {'X':0, 'Y': 1, 'Z': 2, 'E': 3}
+        axis_map = {'X': 0, 'Y': 1, 'Z': 2, 'E': 3, 'A': 4, 'B': 5, 'C': 6}
         extra_axes = toolhead.get_extra_axes()
         for index, ea in enumerate(extra_axes):
             if ea is None:

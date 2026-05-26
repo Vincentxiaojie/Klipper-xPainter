@@ -191,10 +191,10 @@ class Homing:
         # Notify of upcoming homing operation
         self.printer.send_event("homing:home_rails_begin", self, rails)
         # Alter kinematics class to think printer is at forcepos
-        axis_names = "xyzabc"
+        _idx_to_axis_name = {0: 'x', 1: 'y', 2: 'z', 4: 'a', 5: 'b', 6: 'c'}
         force_axes = [axis for axis in range(len(forcepos))
                       if forcepos[axis] is not None]
-        homing_axes = "".join([axis_names[i] if i < len(axis_names) else ""
+        homing_axes = "".join([_idx_to_axis_name.get(i, '')
                                for i in force_axes])
         startpos = self._fill_coord(forcepos)
         homepos = self._fill_coord(movepos)
@@ -241,7 +241,7 @@ class Homing:
             newpos = kin.calc_position(kin_spos)
             for axis in force_axes:
                 if newpos[axis] is None:
-                    aname = axis_names[axis] if axis < len(axis_names) else str(axis)
+                    aname = _idx_to_axis_name.get(axis, str(axis))
                     raise self.printer.command_error(
                             "Cannot determine position of toolhead on "
                             "axis %s after homing" % aname)
@@ -284,9 +284,10 @@ class PrinterHoming:
     def cmd_G28(self, gcmd):
         # Move to origin
         axes = []
-        for pos, axis in enumerate('XYZABC'):
+        _axis_to_idx = {'X': 0, 'Y': 1, 'Z': 2, 'A': 4, 'B': 5, 'C': 6}
+        for axis in 'XYZABC':
             if gcmd.get(axis, None) is not None:
-                axes.append(pos)
+                axes.append(_axis_to_idx[axis])
         if not axes:
             axes = [0, 1, 2]
         homing_state = Homing(self.printer)

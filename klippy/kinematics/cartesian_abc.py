@@ -84,8 +84,10 @@ class CartABCKinematics:
         homing_state.home_rails([rail], forcepos, homepos)
     def home(self, homing_state):
         for axis in homing_state.get_axes():
-            if axis < len(self.axes):
-                self.home_axis(homing_state, axis, self.rails[axis])
+            # axis is a commanded_pos index; convert to rail index via _pos_idx
+            if axis in self._pos_idx:
+                rail_idx = self._pos_idx.index(axis)
+                self.home_axis(homing_state, rail_idx, self.rails[rail_idx])
     def _check_endstops(self, move):
         end_pos = move.end_pos
         for i in range(len(self.axes)):
