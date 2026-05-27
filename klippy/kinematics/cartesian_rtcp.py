@@ -143,7 +143,10 @@ class CartesianRTCPKinematics:
                     self.tool_length = 0.
                     try:
                         pos = list(toolhead.get_position())
-                        pos[pos_idx] -= offset
+                        if effective_dir:
+                            pos[pos_idx] += offset
+                        else:
+                            pos[pos_idx] -= offset
                         toolhead.move(pos, hi.speed)
                         toolhead.wait_moves()
                     finally:

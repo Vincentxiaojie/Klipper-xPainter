@@ -107,7 +107,10 @@ class CartABCKinematics:
                 if offset != 0.:
                     toolhead = self.printer.lookup_object('toolhead')
                     pos = list(toolhead.get_position())
-                    pos[pos_idx] -= offset
+                    if effective_dir:
+                        pos[pos_idx] += offset
+                    else:
+                        pos[pos_idx] -= offset
                     toolhead.move(pos, hi.speed)
                     toolhead.wait_moves()
                     th_pos = list(toolhead.get_position())
