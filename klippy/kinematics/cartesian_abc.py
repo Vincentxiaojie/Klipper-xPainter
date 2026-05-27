@@ -38,7 +38,12 @@ class CartABCKinematics:
                 self._pos_idx.append('xyz'.index(axis_name))
             else:
                 self._pos_idx.append(4 + 'abc'.index(axis_name))
-        print(f"DEBUG cartesian_abc: _pos_idx = {self._pos_idx}")
+        # Per-axis endstop offsets (read from each stepper config)
+        self._endstop_offsets = {}
+        for axis_name in self.axes:
+            sconfig = config.getsection('stepper_' + axis_name)
+            offset = sconfig.getfloat('homing_endstop_offset', 0.)
+            self._endstop_offsets[axis_name] = offset
     def get_steppers(self):
         return [s for rail in self.rails for s in rail.get_steppers()]
     def calc_position(self, stepper_positions):
@@ -98,10 +103,11 @@ class CartABCKinematics:
                 homing_state.home_rails([rail], forcepos, homepos)
                 # Apply endstop offset: physically move from trigger
                 # point to true zero, then set coordinate.
-                if hi.endstop_offset != 0.:
+                offset = self._endstop_offsets.get(self.axes[axis], 0.)
+                if offset != 0.:
                     toolhead = self.printer.lookup_object('toolhead')
                     pos = list(toolhead.get_position())
-                    pos[pos_idx] -= hi.endstop_offset
+                    pos[pos_idx] -= offset
                     toolhead.move(pos, hi.speed)
                     toolhead.wait_moves()
                     th_pos = list(toolhead.get_position())

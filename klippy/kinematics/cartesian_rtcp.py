@@ -46,6 +46,12 @@ class CartesianRTCPKinematics:
                 self._pos_idx.append('xyz'.index(axis_name))
             else:
                 self._pos_idx.append(4 + 'abc'.index(axis_name))
+        # Per-axis endstop offsets (read from each stepper config)
+        self._endstop_offsets = {}
+        for axis_name in self.axes:
+            sconfig = config.getsection('stepper_' + axis_name)
+            offset = sconfig.getfloat('homing_endstop_offset', 0.)
+            self._endstop_offsets[axis_name] = offset
         # Register as gcode_move transform for position display (pivot -> tip)
         self.next_transform = None
         self.printer.register_event_handler("klippy:ready", self._handle_ready)
@@ -128,7 +134,8 @@ class CartesianRTCPKinematics:
                 homing_state.home_rails([rail], forcepos, homepos)
                 # Apply endstop offset: physically move from trigger
                 # point to true zero, then set coordinate.
-                if hi.endstop_offset != 0.:
+                offset = self._endstop_offsets.get(self.axes[axis], 0.)
+                if offset != 0.:
                     toolhead = self.printer.lookup_object('toolhead')
                     # Temporarily disable RTCP so the post-homing
                     # jog moves only the target rotary axis.
@@ -136,7 +143,7 @@ class CartesianRTCPKinematics:
                     self.tool_length = 0.
                     try:
                         pos = list(toolhead.get_position())
-                        pos[pos_idx] -= hi.endstop_offset
+                        pos[pos_idx] -= offset
                         toolhead.move(pos, hi.speed)
                         toolhead.wait_moves()
                     finally:
