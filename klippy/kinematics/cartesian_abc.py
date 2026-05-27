@@ -31,7 +31,6 @@ class CartABCKinematics:
         self.max_z_accel = config.getfloat('max_z_accel', max_accel,
                                            above=0., maxval=max_accel)
         self.limits = [(1.0, -1.0)] * len(self.axes)
-        self.endstop_offset = config.getfloat('homing_endstop_offset', 0.)
         # Map rail index to commanded_pos index (E is at commanded_pos[3])
         self._pos_idx = []
         for axis_name in self.axes:
@@ -99,10 +98,10 @@ class CartABCKinematics:
                 homing_state.home_rails([rail], forcepos, homepos)
                 # Apply endstop offset: physically move from trigger
                 # point to true zero, then set coordinate.
-                if self.endstop_offset != 0.:
+                if hi.endstop_offset != 0.:
                     toolhead = self.printer.lookup_object('toolhead')
                     pos = list(toolhead.get_position())
-                    pos[pos_idx] -= self.endstop_offset
+                    pos[pos_idx] -= hi.endstop_offset
                     toolhead.move(pos, hi.speed)
                     toolhead.wait_moves()
                     th_pos = list(toolhead.get_position())
