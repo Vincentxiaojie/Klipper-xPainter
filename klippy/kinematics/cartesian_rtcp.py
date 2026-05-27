@@ -130,34 +130,57 @@ class CartesianRTCPKinematics:
                 forcepos[pos_idx] -= multiplier * (hi.position_endstop - position_min)
             else:
                 forcepos[pos_idx] += multiplier * (position_max - hi.position_endstop)
-            try:
-                homing_state.home_rails([rail], forcepos, homepos)
-                # Apply endstop offset: physically move from trigger
-                # point to true zero, then set coordinate.
-                offset = self._endstop_offsets.get(self.axes[axis], 0.)
-                if offset != 0.:
-                    toolhead = self.printer.lookup_object('toolhead')
-                    # Temporarily disable RTCP so the post-homing
-                    # jog moves only the target rotary axis.
-                    saved_L = self.tool_length
-                    self.tool_length = 0.
-                    try:
-                        pos = list(toolhead.get_position())
-                        if effective_dir:
-                            pos[pos_idx] += offset
-                        else:
-                            pos[pos_idx] -= offset
-                        toolhead.move(pos, hi.speed)
-                        toolhead.wait_moves()
-                    finally:
-                        self.tool_length = saved_L
-                    th_pos = list(toolhead.get_position())
-                    th_pos[pos_idx] = hi.position_endstop
-                    toolhead.set_position(th_pos)
-                return
-            except self.printer.command_error as e:
-                last_error = e
-                continue
+            tried_manual_retract = False
+            while True:
+                try:
+                    homing_state.home_rails([rail], forcepos, homepos)
+                    # Apply endstop offset: physically move from trigger
+                    # point to true zero, then set coordinate.
+                    offset = self._endstop_offsets.get(self.axes[axis], 0.)
+                    if offset != 0.:
+                        toolhead = self.printer.lookup_object('toolhead')
+                        # Temporarily disable RTCP so the post-homing
+                        # jog moves only the target rotary axis.
+                        saved_L = self.tool_length
+                        self.tool_length = 0.
+                        try:
+                            pos = list(toolhead.get_position())
+                            if effective_dir:
+                                pos[pos_idx] += offset
+                            else:
+                                pos[pos_idx] -= offset
+                            toolhead.move(pos, hi.speed)
+                            toolhead.wait_moves()
+                        finally:
+                            self.tool_length = saved_L
+                        th_pos = list(toolhead.get_position())
+                        th_pos[pos_idx] = hi.position_endstop
+                        toolhead.set_position(th_pos)
+                    return
+                except self.printer.command_error as e:
+                    if not tried_manual_retract and "still triggered" in str(e):
+                        tried_manual_retract = True
+                        toolhead = self.printer.lookup_object('toolhead')
+                        # Disable RTCP so the retract jog only
+                        # moves the target rotary axis.
+                        saved_L = self.tool_length
+                        self.tool_length = 0.
+                        try:
+                            pos = list(toolhead.get_position())
+                            manual_retract = hi.retract_dist * 3
+                            if effective_dir:
+                                pos[pos_idx] -= manual_retract
+                            else:
+                                pos[pos_idx] += manual_retract
+                            pos[pos_idx] = max(position_min,
+                                               min(position_max, pos[pos_idx]))
+                            toolhead.move(pos, hi.retract_speed)
+                            toolhead.wait_moves()
+                        finally:
+                            self.tool_length = saved_L
+                        continue
+                    last_error = e
+                    break
         raise last_error
 
     def home(self, homing_state):
