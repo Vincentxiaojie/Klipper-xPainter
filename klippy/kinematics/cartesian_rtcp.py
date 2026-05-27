@@ -138,7 +138,7 @@ class CartesianRTCPKinematics:
                     try:
                         pos = list(toolhead.get_position())
                         pos[pos_idx] -= self.endstop_offset
-                        toolhead.move(pos, hi.homing_speed)
+                        toolhead.move(pos, hi.speed)
                         toolhead.wait_moves()
                     finally:
                         self.tool_length = saved_L

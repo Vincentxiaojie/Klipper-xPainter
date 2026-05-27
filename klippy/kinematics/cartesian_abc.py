@@ -103,7 +103,7 @@ class CartABCKinematics:
                     toolhead = self.printer.lookup_object('toolhead')
                     pos = list(toolhead.get_position())
                     pos[pos_idx] -= self.endstop_offset
-                    toolhead.move(pos, hi.homing_speed)
+                    toolhead.move(pos, hi.speed)
                     toolhead.wait_moves()
                     th_pos = list(toolhead.get_position())
                     th_pos[pos_idx] = hi.position_endstop

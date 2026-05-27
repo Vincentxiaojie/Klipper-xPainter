@@ -1,0 +1,22 @@
+# RTCP homing with homing_endstop_offset test
+# Tests the physical offset jog path for G28 C
+
+DICTIONARY linuxprocess.dict
+CONFIG rtcp_offset.cfg
+
+# Home only C axis (cold start, no prior homing)
+G28 C
+M114
+
+# Home C again (already at endstop)
+G28 C
+M114
+
+# Home only B axis
+G28 B
+M114
+
+# Move both and re-home
+G1 B30 C90 F600
+G28 C
+M114
