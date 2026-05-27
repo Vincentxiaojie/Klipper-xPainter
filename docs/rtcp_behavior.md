@@ -28,6 +28,46 @@ RTCP 系统维护两套坐标空间：
 
 `gcode_move` 的 transform 链在每次 `G1` 时将 TIP→PIVOT，在每次 `M114` / `GET_POSITION` 时将 PIVOT→TIP。
 
+## 归零后 Z 轴显示值 ≠ position_endstop
+
+G28 Z 归零后，M114 显示的 Z 值**不是** stepper_z 配置的 `position_endstop`，而是被 `tool_length` 偏移后的 TIP 坐标。
+
+### 原因
+
+归零作用于 PIVOT 空间——Z 轴电机移动到 `position_endstop`，PIVOT_Z 就是那个值。但 M114 通过逆 RTCP 变换显示 TIP 空间坐标：
+
+```
+TIP_Z = PIVOT_Z - L · cos(B)
+```
+
+### 实例
+
+配置：`position_endstop: 150`, `tool_length: 80`：
+
+| B 角度 | cos(B) | TIP_Z = 150 - 80·cos(B) |
+|--------|--------|--------------------------|
+| B = 0°（笔垂直） | 1.0 | 150 - 80 = **70** |
+| B = 20° | 0.94 | 150 - 75.2 = **74.8** |
+| B = 45° | 0.707 | 150 - 56.6 = **93.4** |
+| B = 90°（笔水平） | 0 | 150 - 0 = **150** |
+
+B=0 时笔尖最低（最接近台面），显示的 Z 最小；B 越大笔尖越高，显示的 Z 越大。
+
+### Z 轴有效行程
+
+配置的 `position_min` / `position_max` 是 PIVOT 空间的机械限位。实际笔尖可到达范围：
+
+```
+TIP_Z_min = position_min - L    （B=0 时笔尖最低）
+TIP_Z_max = position_max - L    （B=0 时笔尖最高）
+```
+
+如果需要笔尖能到达某个 Z 值，需将 `position_max` 设为 `目标Z + tool_length`。
+
+### 其他轴
+
+X/Y 轴在 B=0 且 C=0 时不受 `tool_length` 影响（sin(0°)=0），但 B≠0 时同样会被偏移。
+
 ## M114 为何显示 XYZ 不变
 
 执行 `G1 B20 C20` 后物理 XYZ 电机会动，但 M114 显示 XYZ 不变——**这是 RTCP 的正确行为**。
