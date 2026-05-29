@@ -82,15 +82,15 @@ G1 B20 C20 F400
   ├─ gcode_move 更新 TIP 坐标: (50, 100, 10, B=20, C=20)
   │
   ├─ cartesian_rtcp.move() → _apply_rtcp()  TIP→PIVOT:
-  │   X_pivot = 50 + 80·sin(20°)·cos(20°) = 50 + 25.71 = 75.71
-  │   Y_pivot = 100 + 80·sin(20°)·sin(20°) = 100 + 9.36 = 109.36
+  │   X_pivot = 50 - 80·sin(20°)·cos(20°) = 50 - 25.71 = 24.29
+  │   Y_pivot = 100 - 80·sin(20°)·sin(20°) = 100 - 9.36 = 90.64
   │   Z_pivot = 10 + 80·cos(20°) = 10 + 75.18 = 85.18
   │
-  ├─ toolhead.move(75.71, 109.36, 85.18, ...)  — XYZBC 电机运动
+  ├─ toolhead.move(24.29, 90.64, 85.18, ...)  — XYZBC 电机运动
   │
   └─ M114 → get_position() → _apply_inverse_rtcp()  PIVOT→TIP:
-      X_tip = 75.71 - 80·sin(20°)·cos(20°) = 75.71 - 25.71 = 50  ← 不变
-      Y_tip = 109.36 - 80·sin(20°)·sin(20°) = 109.36 - 9.36 = 100 ← 不变
+      X_tip = 24.29 + 80·sin(20°)·cos(20°) = 24.29 + 25.71 = 50  ← 不变
+      Y_tip = 90.64 + 80·sin(20°)·sin(20°) = 90.64 + 9.36 = 100 ← 不变
       Z_tip = 85.18 - 80·cos(20°) = 85.18 - 75.18 = 10            ← 不变
       B/C tip = 20/20 ← 反映当前角度
 ```
@@ -116,16 +116,16 @@ GET_POSITION
 ### TIP → PIVOT（正向变换，`_apply_rtcp`）
 
 ```
-X_pivot = X_tip + L · sin(B) · cos(C)
-Y_pivot = Y_tip + L · sin(B) · sin(C)
+X_pivot = X_tip - L · sin(B) · cos(C)
+Y_pivot = Y_tip - L · sin(B) · sin(C)
 Z_pivot = Z_tip + L · cos(B)
 ```
 
 ### PIVOT → TIP（逆向变换，`_apply_inverse_rtcp`）
 
 ```
-X_tip = X_pivot - L · sin(B) · cos(C)
-Y_tip = Y_pivot - L · sin(B) · sin(C)
+X_tip = X_pivot + L · sin(B) · cos(C)
+Y_tip = Y_pivot + L · sin(B) · sin(C)
 Z_tip = Z_pivot - L · cos(B)
 ```
 
@@ -137,8 +137,8 @@ Z_tip = Z_pivot - L · cos(B)
 
 **RTCP 变换**：`cartesian_rtcp.move()` 调用 `_apply_rtcp(pos)`，根据公式将 TIP 坐标转换为 PIVOT 坐标。B 从 0° 变为 20°，会改变 `sin(B)` 和 `cos(B)` 的值：
 
-- `X_pivot` 变化量 = L · (sin(20°) - sin(0°)) · cos(C)
-- `Y_pivot` 变化量 = L · (sin(20°) - sin(0°)) · sin(C)
+- `X_pivot` 变化量 = -L · (sin(20°) - sin(0°)) · cos(C)
+- `Y_pivot` 变化量 = -L · (sin(20°) - sin(0°)) · sin(C)
 - `Z_pivot` 变化量 = L · (cos(20°) - cos(0°))
 
 因此 toolhead 收到的 `move` 指令是 PIVOT 空间的 XYZB 四轴同时移动。
@@ -164,7 +164,7 @@ Z pivot 移动 -4.86mm，保持笔尖在台面上不动。
 
 ### 原因
 
-X_pivot = X_tip + L · sin(B) · cos(C)，Y_pivot = Y_tip + L · sin(B) · sin(C)
+X_pivot = X_tip - L · sin(B) · cos(C)，Y_pivot = Y_tip - L · sin(B) · sin(C)
 
 - B=0 时 sin(B)=0，cos(C) 和 sin(C) 的变化被乘以 0，不影响 X/Y pivot → 仅 C 轴转动
 - B≠0 时 sin(B)≠0，C 的变化通过 cos(C)/sin(C) 投影到 X/Y 轴 → XYC 联动

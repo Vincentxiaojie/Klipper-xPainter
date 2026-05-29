@@ -2,9 +2,9 @@
 # B around Y (tilt), C around Z (rotation)
 # tool_length = 80mm
 #
-# RTCP math (BC):
-#   X_pivot = X_tip + L*sin(B)*cos(C)
-#   Y_pivot = Y_tip + L*sin(B)*sin(C)
+# RTCP math (BC) — 2026-05-29 sign fixed:
+#   X_pivot = X_tip - L*sin(B)*cos(C)
+#   Y_pivot = Y_tip - L*sin(B)*sin(C)
 #   Z_pivot = Z_tip + L*cos(B)
 #
 # At B=0: pivot Z = tip Z + 80. So tip Z >= 80 keeps pivot Z >= 0.
@@ -24,9 +24,9 @@ G1 X100 Z80 F6000
 # Reset tip coordinates for verification
 G92 X100 Y0 Z80 B0 C0
 
-# === Test: B=30 tilt forward ===
+# === Test: B=30 tilt (笔向右倾斜) ===
 # Tip: (100, 0, 80, 0, 0) → (100, 0, 80, 30, 0)
-# Pivot: X=100+80*sin30*cos0=140, Y=0+80*sin30*sin0=0, Z=80+80*cos30=149.282
+# Pivot: X=100-80*sin30*cos0=60, Y=0, Z=80+80*cos30=149.282
 G1 B30 F600
 
 # Return B to 0
@@ -40,9 +40,9 @@ G1 C90 F600
 # Return C to 0
 G1 C0 F600
 
-# === Test: B=30 C=90 (tilt right) ===
+# === Test: B=30 C=90 (笔向右前方倾斜) ===
 # Tip: (100, 0, 80, 0, 0) → (100, 0, 80, 30, 90)
-# Pivot: X=100+80*sin30*cos90=100, Y=0+80*sin30*sin90=40, Z=80+80*cos30=149.282
+# Pivot: X=100-80*sin30*cos90=100, Y=0-80*sin30*sin90=-40, Z=80+80*cos30=149.282
 G1 B30 C90 F600
 
 # Return to zero

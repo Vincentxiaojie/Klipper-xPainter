@@ -323,9 +323,9 @@ class CartesianRTCPKinematics:
             sb, cb = math.sin(b), math.cos(b)
             sc, cc = math.sin(c), math.cos(c)
             if pos[0] is not None:
-                pos[0] += L * sb * cc
+                pos[0] -= L * sb * cc
             if pos[1] is not None:
-                pos[1] += L * sb * sc
+                pos[1] -= L * sb * sc
             if pos[2] is not None:
                 pos[2] += L * cb
         else:  # 'ab'
@@ -334,9 +334,9 @@ class CartesianRTCPKinematics:
             ca, sa = math.cos(a), math.sin(a)
             cb, sb = math.cos(b), math.sin(b)
             if pos[0] is not None:
-                pos[0] += L * ca * sb
+                pos[0] -= L * ca * sb
             if pos[1] is not None:
-                pos[1] += L * sa
+                pos[1] -= L * sa
             if pos[2] is not None:
                 pos[2] += L * ca * cb
 
@@ -352,9 +352,9 @@ class CartesianRTCPKinematics:
             sb, cb = math.sin(b), math.cos(b)
             sc, cc = math.sin(c), math.cos(c)
             if pos[0] is not None:
-                pos[0] -= L * sb * cc
+                pos[0] += L * sb * cc
             if pos[1] is not None:
-                pos[1] -= L * sb * sc
+                pos[1] += L * sb * sc
             if pos[2] is not None:
                 pos[2] -= L * cb
         else:  # 'ab'
@@ -363,9 +363,9 @@ class CartesianRTCPKinematics:
             ca, sa = math.cos(a), math.sin(a)
             cb, sb = math.cos(b), math.sin(b)
             if pos[0] is not None:
-                pos[0] -= L * ca * sb
+                pos[0] += L * ca * sb
             if pos[1] is not None:
-                pos[1] -= L * sa
+                pos[1] += L * sa
             if pos[2] is not None:
                 pos[2] -= L * ca * cb
 
