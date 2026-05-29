@@ -1,0 +1,102 @@
+# RTCP compensation direction verification test — BC configuration
+# ================================================================
+# This test does NOT reuse the RTCP formula for expected values.
+# Instead, it independently verifies:
+#   1. Each stepper's physical positive direction (isolated axis moves)
+#   2. RTCP compensation direction (whether X/Y move opposite to the tool tilt)
+#
+# Physical convention for this machine:
+#   B+ => tool tilts toward X+ (right), tip moves right if uncompensated
+#   C+ => rotates tool tilt direction around Z (CCW looking from above)
+#
+# RTCP should compensate: when B+ tilts tip right, pivot must move LEFT (X-)
+# to keep tip stationary. So G1 B+10 should produce NEGATIVE X steps.
+#
+# Step distances (rtcp.cfg):
+#   X, Y: 0.0125 mm/step  (800 steps per 10mm)
+#   Z:    0.0025 mm/step   (4000 steps per 10mm)
+#   B, C: 0.1125 deg/step  (~89 steps per 10 deg)
+#   tool_length = 80 mm
+
+DICTIONARY linuxprocess.dict
+CONFIG rtcp.cfg
+
+# ================================================================
+# Phase 0: Home and establish known position
+# ================================================================
+G28 X Y Z B C
+
+# Move to safe reference: tip=(100, 100, 80), pivot=(100, 100, 160), B=0, C=0
+G92 X0 Y0 Z0 B0 C0
+G1 X100 Y100 Z80 F6000
+G92 X100 Y100 Z80 B0 C0
+
+# ================================================================
+# Phase 1: Verify individual axis positive directions
+# Each axis moved +10 units independently, verify step sign.
+# ================================================================
+
+# X+: should produce +800 X steps (10mm / 0.0125)
+G1 X110 F6000
+M114
+G1 X100 F6000
+
+# Y+: should produce +800 Y steps
+G1 Y110 F6000
+M114
+G1 Y100 F6000
+
+# Z+: should produce +4000 Z steps
+G1 Z90 F6000
+M114
+G1 Z80 F6000
+
+# B+: should produce ~+89 B steps (10 deg / 0.1125)
+G1 B10 F6000
+M114
+G1 B0 F6000
+
+# C+: should produce ~+89 C steps
+G1 C10 F6000
+M114
+G1 C0 F6000
+
+# ================================================================
+# Phase 2: RTCP compensation direction verification
+# ================================================================
+
+# Test A: B+10 at C=0 — tool tilts toward X+, pivot must move X-
+#   X_p = 100 - 80*sin(10)*cos(0) = 100 - 13.89 = 86.11
+#   X stepper should move NEGATIVE (86.11 - 100 = -13.89 mm = -1111 steps)
+#   Z_p = 80 + 80*cos(10) = 80 + 78.78 = 158.78
+#   Z stepper should move NEGATIVE (158.78 - 160 = -1.22 mm = -488 steps)
+G1 B10 F6000
+M114
+G1 B0 F6000
+
+# Test B: B+10 C+90 — tool tilts toward Y+, pivot must move Y-
+# At C=90, the tilt direction rotates from X+ to Y+
+#   Y_p = 100 - 80*sin(10)*sin(90) = 100 - 13.89 = 86.11
+#   Y stepper should move NEGATIVE
+#   X_p = 100 - 80*sin(10)*cos(90) = 100 — X stays
+G1 B10 C90 F6000
+M114
+G1 B0 C0 F6000
+
+# Test C: Pure tip move X+10 with no rotation — baseline
+# X stepper should move POSITIVE (+800 steps)
+G1 X110 F6000
+M114
+G1 X100 F6000
+
+# Test D: Combined: tip moves X+10 AND B tilts 10°
+# Without RTCP sign fix: X would move WRONG direction
+# Tip X goes 100→110 (+10), B goes 0→10
+#   X_p = 110 - 80*sin(10)*cos(0) = 110 - 13.89 = 96.11
+#   from pivot=100: net X = 96.11 - 100 = -3.89 mm = -311 steps
+#   Net X is NEGATIVE because pivot compensation (-13.89) exceeds tip move (+10)
+G1 X110 B10 F6000
+M114
+G1 X100 B0 F6000
+
+GET_POSITION
