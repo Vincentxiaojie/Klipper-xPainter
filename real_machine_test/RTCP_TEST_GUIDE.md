@@ -12,19 +12,19 @@
 ## 测试金字塔
 
 ```
-Level 6: TEST_RTCP_FULL     — 5点两轮打点验收 (XYZBC 全五轴)
-Level 5: TEST_RTCP_5AXIS    — 倾斜画 φ30 圆对比 (XYZBC 全五轴)
-Level 4: TEST_RTCP_4AXIS    — 倾斜画 30mm 方框对比 (XYZB 四轴)
-Level 3: TEST_RTCP_3AXIS    — C 旋转画线对比 (XYC 三轴)
-Level 2: TEST_RTCP_2AXIS    — B 俯仰画线对比 (XZ 两轴)
-Level 1: TEST_RTCP_1AXIS    — 纯 XYZ 基线 (无 RTCP)
+TEST_RTCP_FULL     — 5点两轮打点验收 (XYZBC 全五轴)     [终极]
+TEST_RTCP_CIRCLE   — 倾斜画 φ30 圆对比 (XYZBC 全五轴)   [Level 5]
+TEST_RTCP_SQUARE   — 倾斜画 30mm 方框对比 (XYZB 四轴)   [Level 4]
+TEST_RTCP_C_ROTATE — C 旋转画线对比 (XYC 三轴)          [Level 3]
+TEST_RTCP_B_TILT   — B 俯仰画线对比 (XZ 两轴)           [Level 2]
+TEST_RTCP_BASELINE — 纯 XYZ 基线 (无 RTCP)              [Level 1]
 ```
 
 每级在纸上留下可见痕迹，通过对比 B=0/C=0 基线和倾斜姿态的结果判断 RTCP 精度。
 
 ---
 
-## Level 1: TEST_RTCP_1AXIS — 纯 XYZ 基线
+## TEST_RTCP_BASELINE — 纯 XYZ 基线
 
 | 项目 | 说明 |
 |------|------|
@@ -52,7 +52,7 @@ G-code 流程:
 
 ---
 
-## Level 2: TEST_RTCP_2AXIS — B 俯仰画线 (2轴联动)
+## TEST_RTCP_B_TILT — B 俯仰画线
 
 | 项目 | 说明 |
 |------|------|
@@ -79,7 +79,7 @@ G-code 流程:
 
 ---
 
-## Level 3: TEST_RTCP_3AXIS — C 旋转画线 (3轴联动)
+## TEST_RTCP_C_ROTATE — C 旋转画线
 
 | 项目 | 说明 |
 |------|------|
@@ -101,7 +101,7 @@ G-code 流程:
 
 ---
 
-## Level 4: TEST_RTCP_4AXIS — 倾斜画方框 (4轴联动)
+## TEST_RTCP_SQUARE — 倾斜画方框
 
 | 项目 | 说明 |
 |------|------|
@@ -131,7 +131,7 @@ G-code 流程:
 
 ---
 
-## Level 5: TEST_RTCP_5AXIS — 倾斜画圆 (全五轴联动)
+## TEST_RTCP_CIRCLE — 倾斜画圆
 
 | 项目 | 说明 |
 |------|------|
@@ -164,7 +164,7 @@ G-code 流程:
 
 ---
 
-## Level 6: TEST_RTCP_FULL — 多点打点验收 (终极)
+## TEST_RTCP_FULL — 多点打点验收
 
 | 项目 | 说明 |
 |------|------|
@@ -172,7 +172,7 @@ G-code 流程:
 | **目的** | RTCP 精度终极验证 — 两组点应完全重合 |
 | **参考点** | 中心 (0,0)、右 (25,0)、前 (25,25)、左 (0,25)、回中心 (0,0) |
 | **打点** | 第1轮: B=0 C=0 打 5 个点 → 第2轮: B=15 C=20 重访打点 |
-| **预期** | **两轮 5×5 点阵完全重合** (每个点打两次在同一位置) |
+| **预期** | **两轮 5 点阵完全重合** (每个点打两次在同一位置) |
 | **判定** | 不重合 → 综合检查 tool_length, B/C 中心, XY 步进 |
 
 ```
@@ -198,34 +198,34 @@ G-code 流程:
 
 ```
 Klipper 控制台:
-  TEST_RTCP_1AXIS    # 1. 先画基线，确认电机方向正确
-  TEST_RTCP_2AXIS    # 2. B俯仰线应重合
-  TEST_RTCP_3AXIS    # 3. C旋转线位置同一，线宽变化
-  TEST_RTCP_4AXIS    # 4. 方框应重合
-  TEST_RTCP_5AXIS    # 5. 圆应重合，不变椭圆
-  TEST_RTCP_FULL     # 6. 两轮点应重合
+  TEST_RTCP_BASELINE    # 1. 先画基线，确认电机方向正确
+  TEST_RTCP_B_TILT      # 2. B俯仰线应重合
+  TEST_RTCP_C_ROTATE    # 3. C旋转线位置同一，线宽变化
+  TEST_RTCP_SQUARE      # 4. 方框应重合
+  TEST_RTCP_CIRCLE      # 5. 圆应重合，不变椭圆
+  TEST_RTCP_FULL        # 6. 两轮点应重合
 ```
 
 ### 通过标准
 
-| 级别 | 合格线 | 说明 |
-|------|--------|------|
-| L1 | 线画得出 | 基础功能 |
-| L2 | 线偏差 < 0.5mm | 裸眼可辨 |
-| L3 | 线偏差 < 0.5mm | C 角度应改变线宽 |
-| L4 | 方框偏差 < 0.5mm | 形状应保持正方 |
-| L5 | 圆偏差 < 0.5mm | 不应变椭圆 |
-| L6 | 点偏差 < 0.3mm | 终极精度 |
+| 测试宏 | 合格线 | 说明 |
+|--------|--------|------|
+| BASELINE | 线画得出 | 基础功能 |
+| B_TILT | 线偏差 < 0.5mm | 裸眼可辨 |
+| C_ROTATE | 线偏差 < 0.5mm | C 角度应改变线宽 |
+| SQUARE | 方框偏差 < 0.5mm | 形状应保持正方 |
+| CIRCLE | 圆偏差 < 0.5mm | 不应变椭圆 |
+| FULL | 点偏差 < 0.3mm | 终极精度 |
 
 ### 失败诊断矩阵
 
 | 症状 | 可能原因 | 修复 |
 |------|---------|------|
-| L2 倾斜线偏移 | `tool_length` 不准 | 重新实测 B 轴旋转中心到笔尖距离 |
-| L3 线宽不变 | C 轴不转 | 检查 stepper_c 连接/使能 |
-| L4 方框变梯形 | X/Y 轴不垂直 | 检查机械装配 |
-| L4/L5 圆变椭圆 | X/Y 步进比例不准 | `rotation_distance` 需校准 |
-| L6 两轮点不重合 | B/C 中心偏移 | 检查旋转中心与工具中心对准 |
+| B_TILT 倾斜线偏移 | `tool_length` 不准 | 重新实测 B 轴旋转中心到笔尖距离 |
+| C_ROTATE 线宽不变 | C 轴不转 | 检查 stepper_c 连接/使能 |
+| SQUARE 方框变梯形 | X/Y 轴不垂直 | 检查机械装配 |
+| CIRCLE 圆变椭圆 | X/Y 步进比例不准 | `rotation_distance` 需校准 |
+| FULL 两轮点不重合 | B/C 中心偏移 | 检查旋转中心与工具中心对准 |
 | 任何级画不出线 | 笔太高 | 增大 `_PEN_DOWN` 的 Z 下移量 |
 
 ---
@@ -238,6 +238,8 @@ Klipper 控制台:
 | `_RTCP_SHOW_POS` | 输出 M114 + GET_POSITION | 诊断用 |
 | `_PEN_DOWN` | 相对下移 Z-5 (降笔) | 笔触不到就改大，如 Z-8 |
 | `_PEN_UP` | 相对上移 Z5 (抬笔) | 需与 _PEN_DOWN 对称 |
+
+> **命名规则**: Klipper 的 `[gcode_macro]` 名称不能包含数字（如 `_2AXIS`），否则 G-code 解析器会把数字当参数拆开。
 
 ---
 
