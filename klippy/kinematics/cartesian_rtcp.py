@@ -301,8 +301,55 @@ class CartesianRTCPKinematics:
 
     def move(self, newpos, speed):
         newpos = list(newpos)
-        self._apply_rtcp(newpos)
-        self.next_transform.move(newpos, speed)
+        # Pad to 7 elements
+        while len(newpos) < 7:
+            newpos.append(0.)
+        L = self.tool_length
+        if not L:
+            self.next_transform.move(newpos, speed)
+            return
+        # Compute max single-step rotary angle for acceptable tip deviation.
+        # For a pure rotary move, pivot-space linear interpolation causes the
+        # tool tip to deviate from its programmed position by up to:
+        #   ΔZ = L * (1 - cos(Δθ/2))
+        # With tolerance = 0.5mm and L up to ~200mm, a step of ~8° is safe.
+        tolerance = 0.5
+        if L > tolerance:
+            max_angle = 2.0 * math.degrees(math.acos(1.0 - tolerance / L))
+        else:
+            max_angle = 90.0
+        # Determine rotary axis indices
+        if self.rotary_config == 'bc':
+            r1_idx, r2_idx = 5, 6  # B, C in commanded_pos
+        else:
+            r1_idx, r2_idx = 4, 5  # A, B in commanded_pos
+        # Get current rotary angles via the transform chain (tip space)
+        curpos_tip = self.get_position()
+        while len(curpos_tip) < 7:
+            curpos_tip.append(0.)
+        # Compute max rotary delta
+        def safe_val(arr, idx):
+            v = arr[idx] if len(arr) > idx else 0.
+            return 0. if v is None else v
+        d1 = abs(safe_val(newpos, r1_idx) - safe_val(curpos_tip, r1_idx))
+        d2 = abs(safe_val(newpos, r2_idx) - safe_val(curpos_tip, r2_idx))
+        max_delta = max(d1, d2)
+        if max_delta <= max_angle:
+            # Single segment
+            self._apply_rtcp(newpos)
+            self.next_transform.move(newpos, speed)
+            return
+        # Subdivide: N segments so each Δangle ≤ max_angle
+        segments = int(math.ceil(max_delta / max_angle))
+        for i in range(1, segments + 1):
+            t = i / segments
+            seg = []
+            for j in range(7):
+                cv = safe_val(curpos_tip, j)
+                nv = safe_val(newpos, j)
+                seg.append(cv + (nv - cv) * t)
+            self._apply_rtcp(seg)
+            self.next_transform.move(seg, speed)
 
     def get_position(self):
         pos = self.next_transform.get_position()
