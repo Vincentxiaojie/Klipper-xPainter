@@ -17,6 +17,11 @@ class CartesianRTCPKinematics:
         self.rotary_config = config.get('rotary_config', 'bc').lower()
         if self.rotary_config not in ('ab', 'bc'):
             raise config.error("rotary_config must be 'ab' or 'bc'")
+        # Pivot offset: B-axis rotation center offset from nominal
+        # Px: X offset, Py: Y offset, Pz: Z offset (mm)
+        self.pivot_x = config.getfloat('pivot_x', 0.)
+        self.pivot_y = config.getfloat('pivot_y', 0.)
+        self.pivot_z = config.getfloat('pivot_z', 0.)
         # Determine which axes are configured
         self.axes = 'xyz'
         for axis in 'abc':
@@ -364,17 +369,19 @@ class CartesianRTCPKinematics:
         L = self.tool_length
         if not L:
             return
+        px, py, pz = self.pivot_x, self.pivot_y, self.pivot_z
+        Le = L - pz  # effective tool length accounting for Z pivot offset
         if self.rotary_config == 'bc':
             b = math.radians(pos[5]) if len(pos) > 5 and pos[5] is not None else 0.
             c = math.radians(pos[6]) if len(pos) > 6 and pos[6] is not None else 0.
             sb, cb = math.sin(b), math.cos(b)
             sc, cc = math.sin(c), math.cos(c)
             if pos[0] is not None:
-                pos[0] -= L * sb * cc
+                pos[0] -= px * cc * cb - py * sc + Le * cc * sb
             if pos[1] is not None:
-                pos[1] -= L * sb * sc
+                pos[1] -= px * sc * cb + py * cc + Le * sc * sb
             if pos[2] is not None:
-                pos[2] += L * cb
+                pos[2] += -px * sb + Le * cb
         else:  # 'ab'
             a = math.radians(pos[4]) if len(pos) > 4 and pos[4] is not None else 0.
             b = math.radians(pos[5]) if len(pos) > 5 and pos[5] is not None else 0.
@@ -393,17 +400,19 @@ class CartesianRTCPKinematics:
         L = self.tool_length
         if not L:
             return
+        px, py, pz = self.pivot_x, self.pivot_y, self.pivot_z
+        Le = L - pz  # effective tool length accounting for Z pivot offset
         if self.rotary_config == 'bc':
             b = math.radians(pos[5]) if len(pos) > 5 and pos[5] is not None else 0.
             c = math.radians(pos[6]) if len(pos) > 6 and pos[6] is not None else 0.
             sb, cb = math.sin(b), math.cos(b)
             sc, cc = math.sin(c), math.cos(c)
             if pos[0] is not None:
-                pos[0] += L * sb * cc
+                pos[0] += px * cc * cb - py * sc + Le * cc * sb
             if pos[1] is not None:
-                pos[1] += L * sb * sc
+                pos[1] += px * sc * cb + py * cc + Le * sc * sb
             if pos[2] is not None:
-                pos[2] -= L * cb
+                pos[2] += px * sb - Le * cb
         else:  # 'ab'
             a = math.radians(pos[4]) if len(pos) > 4 and pos[4] is not None else 0.
             b = math.radians(pos[5]) if len(pos) > 5 and pos[5] is not None else 0.
