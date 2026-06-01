@@ -172,13 +172,13 @@ G-code (TIP空间)              显示 (TIP空间)
 B = B 轴角度 (绕 Y 俯仰), C = C 轴角度 (绕 Z 旋转), L = tool_length
 
 TIP → PIVOT (RTCP):
-  X_pivot = X_tip + L · sin(B) · cos(C)
-  Y_pivot = Y_tip + L · sin(B) · sin(C)
+  X_pivot = X_tip - L · sin(B) · cos(C)
+  Y_pivot = Y_tip - L · sin(B) · sin(C)
   Z_pivot = Z_tip + L · cos(B)
 
 PIVOT → TIP (逆 RTCP):
-  X_tip = X_pivot - L · sin(B) · cos(C)
-  Y_tip = Y_pivot - L · sin(B) · sin(C)
+  X_tip = X_pivot + L · sin(B) · cos(C)
+  Y_tip = Y_pivot + L · sin(B) · sin(C)
   Z_tip = Z_pivot - L · cos(B)
 ```
 

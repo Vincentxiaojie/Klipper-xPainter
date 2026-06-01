@@ -10,8 +10,8 @@
 ;   XYZ 电机应自动移动补偿，保持笔尖位置不变
 ;
 ; BC RTCP 公式:
-;   X_pivot = X_tip + L*sin(B)*cos(C)
-;   Y_pivot = Y_tip + L*sin(B)*sin(C)
+;   X_pivot = X_tip - L*sin(B)*cos(C)
+;   Y_pivot = Y_tip - L*sin(B)*sin(C)
 ;   Z_pivot = Z_tip + L*cos(B)
 ;
 ; tool_length 默认 80mm，请根据实际值修改
