@@ -60,12 +60,12 @@ class CartesianRTCPKinematics:
         return [s for rail in self.rails for s in rail.get_steppers()]
 
     def calc_position(self, stepper_positions):
-        # Stepper positions are in pivot space. Convert to tip for reporting.
+        # Stepper positions are in pivot space. Return as-is (pivot space).
+        # Tip-space display is handled by gcode_move's get_position() transform.
         pos = [stepper_positions[rail.get_name()] for rail in self.rails]
         # Pad to 7 elements [X, Y, Z, E, A, B, C]
         while len(pos) < 7:
             pos.append(0.)
-        self._apply_inverse_rtcp(pos)
         return pos
 
     def update_limits(self, i, range):
