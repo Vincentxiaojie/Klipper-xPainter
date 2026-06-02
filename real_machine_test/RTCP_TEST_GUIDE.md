@@ -16,7 +16,7 @@ TEST_RTCP_FULL     — 5点两轮打点验收 (XYZBC 全五轴)     [终极]
 TEST_RTCP_CIRCLE   — 倾斜画 φ30 圆对比 (XYZBC 全五轴)   [Level 5]
 TEST_RTCP_SQUARE   — 倾斜画 30mm 方框对比 (XYZB 四轴)   [Level 4]
 TEST_RTCP_C_ROTATE — C 旋转画线对比 (XYC 三轴)          [Level 3]
-TEST_RTCP_B_TILT   — B 俯仰画线对比 (XZ 两轴)           [Level 2]
+TEST_RTCP_B        — B轴RTCP综合测试 (画线+打点)        [Level 2]
 TEST_RTCP_BASELINE — 纯 XYZ 基线 (无 RTCP)              [Level 1]
 ```
 
@@ -52,29 +52,41 @@ G-code 流程:
 
 ---
 
-## TEST_RTCP_B_TILT — B 俯仰画线
+## TEST_RTCP_B — B轴RTCP综合测试
 
 | 项目 | 说明 |
 |------|------|
-| **轴数** | X + Z + B (B 轴俯仰时 XZ 联动补偿) |
-| **目的** | 验证 B 轴倾斜后笔尖 Z 高度和 X 位置是否正确补偿 |
-| **画线** | B=0 画 X 线 → B=15 再画 → B=25 再画 → B=-15 再画 |
-| **预期** | **4 条线完全重合**（同一位置同一方向） |
-| **判定** | 倾斜线偏移 → `tool_length` 不准确，重新实测 |
-| **原理** | B 倾斜时笔尖几何关系: X_pivot += L·sin(B), Z_pivot += L·cos(B) |
+| **轴数** | Phase 1: X+Z+B / Phase 2: X+Z+B |
+| **目的** | 两阶段综合验证 B 轴 RTCP: (1) 倾斜画线位置对比, (2) 纯B变化插值精度 |
+| **Phase 1** | B=0/15/25/-15 各画 X 方向线，4 线起始点应在 X=0 排成一列 |
+| **Phase 2** | 纯 B 变化打点 (B=0→15→-15→0, XY 不动)，4 点应完全重合 |
+| **预期** | Phase 1: 起始点列对齐 / Phase 2: 4 点头尾重合 |
+| **判定** | 线起始点 X 偏移 → `tool_length` 不准确；点分散 → RTCP 插值有偏差 |
+| **原理** | B 倾斜时笔尖几何: X_pivot += L·sin(B), Z_pivot += L·cos(B) |
 
 ```
-G-code 流程:
+G-code 流程 (Phase 1):
   _RTCP_HOME_AND_ZERO
   # 线1: B=0 基线
-  _PEN_DOWN → G1 X50 → _PEN_UP → G1 X0
+  _PEN_DOWN → G1 X50 → _PEN_UP
   # 线2: B=15 倾斜
-  G1 B15 F400 → _PEN_DOWN → G1 X50 → _PEN_UP → G1 X0
+  G1 B15 F400 → G1 X0 Y10 → _PEN_DOWN → G1 X50 → _PEN_UP
   # 线3: B=25 大倾角
-  G1 B25 F400 → _PEN_DOWN → G1 X50 → _PEN_UP → G1 X0
-  # 线4: B=-15 反向俯仰
-  G1 B-15 F400 → _PEN_DOWN → G1 X50 → _PEN_UP
-  G1 B0 X0 F600            # 回正
+  G1 B25 F400 → G1 X0 Y20 → _PEN_DOWN → G1 X50 → _PEN_UP
+  # 线4: B=-15 反向
+  G1 B-15 F400 → G1 X0 Y30 → _PEN_DOWN → G1 X50 → _PEN_UP
+  G1 B0 F400
+
+G-code 流程 (Phase 2):
+  G1 X-25 Y0 F3000           # 移到左侧独立区域
+  # 点1: B=0
+  _PEN_DOWN → G4 P500 → _PEN_UP
+  # 点2: B=15 (纯B变化, XY不动)
+  G1 B15 F400 → _PEN_DOWN → G4 P500 → _PEN_UP
+  # 点3: B=-15
+  G1 B-15 F400 → _PEN_DOWN → G4 P500 → _PEN_UP
+  # 点4: B=0 (应与点1完全重合)
+  G1 B0 F400 → _PEN_DOWN → G4 P500 → _PEN_UP
 ```
 
 ---
@@ -199,7 +211,7 @@ G-code 流程:
 ```
 Klipper 控制台:
   TEST_RTCP_BASELINE    # 1. 先画基线，确认电机方向正确
-  TEST_RTCP_B_TILT      # 2. B俯仰线应重合
+  TEST_RTCP_B           # 2. B轴综合: 线对齐+点重合
   TEST_RTCP_C_ROTATE    # 3. C旋转线位置同一，线宽变化
   TEST_RTCP_SQUARE      # 4. 方框应重合
   TEST_RTCP_CIRCLE      # 5. 圆应重合，不变椭圆
@@ -211,7 +223,7 @@ Klipper 控制台:
 | 测试宏 | 合格线 | 说明 |
 |--------|--------|------|
 | BASELINE | 线画得出 | 基础功能 |
-| B_TILT | 线偏差 < 0.5mm | 裸眼可辨 |
+| TEST_RTCP_B | 线偏差 + 点偏差 < 0.5mm | 两阶段综合判定 |
 | C_ROTATE | 线偏差 < 0.5mm | C 角度应改变线宽 |
 | SQUARE | 方框偏差 < 0.5mm | 形状应保持正方 |
 | CIRCLE | 圆偏差 < 0.5mm | 不应变椭圆 |
@@ -221,7 +233,8 @@ Klipper 控制台:
 
 | 症状 | 可能原因 | 修复 |
 |------|---------|------|
-| B_TILT 倾斜线偏移 | `tool_length` 不准 | 重新实测 B 轴旋转中心到笔尖距离 |
+| TEST_RTCP_B Phase1 线偏移 | `tool_length` 不准 | 重新实测 B 轴旋转中心到笔尖距离 |
+| TEST_RTCP_B Phase2 点分散 | RTCP 插值路径错误 | 检查 cartesian_rtcp.py 运动学 |
 | C_ROTATE 线宽不变 | C 轴不转 | 检查 stepper_c 连接/使能 |
 | SQUARE 方框变梯形 | X/Y 轴不垂直 | 检查机械装配 |
 | CIRCLE 圆变椭圆 | X/Y 步进比例不准 | `rotation_distance` 需校准 |
