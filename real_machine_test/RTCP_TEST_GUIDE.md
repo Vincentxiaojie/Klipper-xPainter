@@ -12,12 +12,13 @@
 ## 测试金字塔
 
 ```
-TEST_RTCP_FULL     — 5点两轮打点验收 (XYZBC 全五轴)     [终极]
-TEST_RTCP_CIRCLE   — 倾斜画 φ30 圆对比 (XYZBC 全五轴)   [Level 5]
-TEST_RTCP_SQUARE   — 倾斜画 30mm 方框对比 (XYZB 四轴)   [Level 4]
-TEST_RTCP_C_ROTATE — C 旋转画线对比 (XYC 三轴)          [Level 3]
-TEST_RTCP_B        — B轴RTCP综合测试 (画线+打点)        [Level 2]
-TEST_RTCP_BASELINE — 纯 XYZ 基线 (无 RTCP)              [Level 1]
+TEST_RTCP_FULL          — 5点两轮打点验收 (XYZBC 全五轴)     [终极]
+TEST_RTCP_CIRCLE        — 倾斜画 φ30 圆对比 (XYZBC 全五轴)   [Level 5]
+TEST_RTCP_SQUARE        — 倾斜画 30mm 方框对比 (XYZB 四轴)   [Level 4]
+TEST_RTCP_C_ECCENTRIC   — C轴偏心RTCP验证 (XYZC)             [Level 3.5]
+TEST_RTCP_C_ROTATE      — C 旋转画线对比 (XYC 三轴)          [Level 3]
+TEST_RTCP_B             — B轴RTCP综合测试 (画线+打点)        [Level 2]
+TEST_RTCP_BASELINE      — 纯 XYZ 基线 (无 RTCP)              [Level 1]
 ```
 
 每级在纸上留下可见痕迹，通过对比 B=0/C=0 基线和倾斜姿态的结果判断 RTCP 精度。
@@ -110,6 +111,39 @@ G-code 流程:
   G1 B15 C30 → _PEN_DOWN → G1 X50 → _PEN_UP
   G1 B0 C0 X0 F600
 ```
+
+---
+
+## TEST_RTCP_C_ECCENTRIC — C轴偏心RTCP验证
+
+| 项目 | 说明 |
+|------|------|
+| **轴数** | X + Y + Z + C (B=0, 仅C轴偏心补偿) |
+| **目的** | 验证笔头偏心安装时 RTCP 正确补偿 C 旋转产生的 XY 轨道运动 |
+| **Phase 1** | 纯C变化打点 (C=0→30→-30→0, XY不动), 4点应重合 |
+| **Phase 2** | C=0/30/-30 各画X线, 3线起始点应对齐X=0 |
+| **预期** | Phase 1: 4点重合 / Phase 2: 线起始点对齐 |
+| **判定** | 点不重合/线偏移 → pivot_y 需校准 (执行 CALIBRATE_C_OFFSET) |
+| **原理** | 笔头不在C轴中心 → C旋转使笔尖沿半径偏移轨道运动 → RTCP 用 pivot_x/pivot_y 补偿 |
+
+```
+G-code 流程 (Phase 1):
+  _RTCP_HOME_AND_ZERO
+  # 4个点: C=0/30/-30/0, XY不动, B=0
+  点1: C=0 → _PEN_DOWN → _PEN_UP
+  G1 C30 F400 → 点2:  _PEN_DOWN → _PEN_UP
+  G1 C-30 F400 → 点3: _PEN_DOWN → _PEN_UP
+  G1 C0 F400 → 点4:   _PEN_DOWN → _PEN_UP
+
+G-code 流程 (Phase 2):
+  # C=0/30/-30 各画X方向线
+  C=0:  _PEN_DOWN → G1 X50 → _PEN_UP → G1 X0
+  C=30: G1 C30 → _PEN_DOWN → G1 X50 → _PEN_UP → G1 X0
+  C=-30: G1 C-30 → _PEN_DOWN → G1 X50 → _PEN_UP
+  G1 C0 X0 F600
+```
+
+**校准公式**: `pivot_y = -dx / sin(C)` (C=30°时: `pivot_y = -2*dx`)
 
 ---
 
@@ -210,9 +244,10 @@ G-code 流程:
 
 ```
 Klipper 控制台:
-  TEST_RTCP_BASELINE    # 1. 先画基线，确认电机方向正确
-  TEST_RTCP_B           # 2. B轴综合: 线对齐+点重合
-  TEST_RTCP_C_ROTATE    # 3. C旋转线位置同一，线宽变化
+  TEST_RTCP_BASELINE      # 1. 先画基线，确认电机方向正确
+  TEST_RTCP_B             # 2. B轴综合: 线对齐+点重合
+  TEST_RTCP_C_ROTATE      # 3. C旋转线位置同一，线宽变化
+  TEST_RTCP_C_ECCENTRIC   # 3.5. C偏心: 点重合+线对齐
   TEST_RTCP_SQUARE      # 4. 方框应重合
   TEST_RTCP_CIRCLE      # 5. 圆应重合，不变椭圆
   TEST_RTCP_FULL        # 6. 两轮点应重合
@@ -224,6 +259,7 @@ Klipper 控制台:
 |--------|--------|------|
 | BASELINE | 线画得出 | 基础功能 |
 | TEST_RTCP_B | 线偏差 + 点偏差 < 0.5mm | 两阶段综合判定 |
+| C_ECCENTRIC | 点重合 + 线偏差 < 0.5mm | 偏心RTCP正确补偿 |
 | C_ROTATE | 线偏差 < 0.5mm | C 角度应改变线宽 |
 | SQUARE | 方框偏差 < 0.5mm | 形状应保持正方 |
 | CIRCLE | 圆偏差 < 0.5mm | 不应变椭圆 |
@@ -235,6 +271,7 @@ Klipper 控制台:
 |------|---------|------|
 | TEST_RTCP_B Phase1 线偏移 | `tool_length` 不准 | 重新实测 B 轴旋转中心到笔尖距离 |
 | TEST_RTCP_B Phase2 点分散 | RTCP 插值路径错误 | 检查 cartesian_rtcp.py 运动学 |
+| C_ECCENTRIC 点不重合/线偏移 | `pivot_y` 不准 | 执行 CALIBRATE_C_OFFSET 重新标定 |
 | C_ROTATE 线宽不变 | C 轴不转 | 检查 stepper_c 连接/使能 |
 | SQUARE 方框变梯形 | X/Y 轴不垂直 | 检查机械装配 |
 | CIRCLE 圆变椭圆 | X/Y 步进比例不准 | `rotation_distance` 需校准 |

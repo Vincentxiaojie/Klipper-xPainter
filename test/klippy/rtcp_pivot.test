@@ -1,0 +1,75 @@
+# RTCP pivot offset accuracy test — BC configuration (XYZ + B + C)
+# Verifies RTCP tip positions remain correct with non-zero pivot_x/pivot_y
+#
+# Config: tool_length=80, pivot_x=5, pivot_y=10, pivot_z=0
+# Step distances:
+#   X, Y: rotation_distance=40, microsteps=16, step_dist=0.0125 mm/step
+#   Z:    rotation_distance=8,  microsteps=16, step_dist=0.0025 mm/step
+#   B, C: rotation_distance=360, full_steps_per_rotation=200, microsteps=16
+#
+# BC RTCP with pivot offsets:
+#   Le = tool_length - pz = 80
+#   X_pivot = X_tip - (px*cos(C)*cos(B) - py*sin(C) + Le*cos(C)*sin(B))
+#   Y_pivot = Y_tip - (px*cos(B)*sin(C) + py*cos(C) + Le*sin(C)*sin(B))
+#   Z_pivot = Z_tip + (-px*sin(B) + Le*cos(B))
+
+DICTIONARY linuxprocess.dict
+CONFIG rtcp_pivot.cfg
+
+# Home all axes
+G28 X Y Z B C
+
+# Set tip coordinates: tip=(100,0,80,0,0)
+# At B=0,C=0: pivot=(95,-10,160,0,0)
+G92 X100 Y0 Z80 B0 C0
+
+# === Test 1: B=0 C=30 (pure C rotation with pivot offset) ===
+# Tip stays at (100,0,80), only C changes to 30
+# Pivot should orbit to keep tip fixed:
+#   X_p = 100 - (5*0.8660*1 - 10*0.5 + 80*0.8660*0) = 100 - (-0.67) = 100.67
+#   Y_p = 0 - (5*1*0.5 + 10*0.8660 + 80*0.5*0) = 0 - 11.16 = -11.16
+M114
+G1 C30 F6000
+M114
+
+# === Test 2: Return C=0 ===
+G1 C0 F6000
+M114
+
+# === Test 3: B=30 C=0 (B tilt with pivot offset) ===
+#   X_p = 100 - (5*0.8660 + 80*0.5) = 100 - 44.33 = 55.67
+#   Z_p = 80 - 5*0.5 + 80*0.8660 = 146.78
+G1 B30 F6000
+M114
+
+# === Test 4: Return B=0 ===
+G1 B0 F6000
+M114
+
+# === Test 5: B=30 C=30 combined ===
+#   X_p = 100 - (5*0.75 - 5 + 80*0.4330) = 100 - 33.39 = 66.61
+#   Y_p = 0 - (5*0.433 + 8.66 + 80*0.25) = -30.825
+G1 B30 C30 F6000
+M114
+
+# === Test 6: Return to base ===
+G1 B0 C0 F6000
+G92 X100 Y0 Z80 B0 C0
+
+# === Test 7: C=90 pure rotation with pivot (pen spins 90) ===
+#   X_p = 100 - (5*0 - 10*1 + 0) = 110
+#   Y_p = 0 - (5*1 + 0 + 0) = -5
+G1 C90 F6000
+M114
+
+# === Test 8: Return to base, then 5-axis synchronized ===
+G1 C0 F6000
+G92 X100 Y0 Z80 B0 C0
+# Target tip=(150,30,100,45,0)
+#   X_p = 150 - (5*0.707 + 80*0.707) = 150 - 60.095 = 89.905
+#   Y_p = 30 - 10 = 20
+#   Z_p = 100 - 5*0.707 + 80*0.707 = 153.025
+G1 X150 Y30 Z100 B45 F6000
+M114
+
+GET_POSITION

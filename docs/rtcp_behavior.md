@@ -111,22 +111,50 @@ GET_POSITION
 
 对比 `toolhead`/`gcode`（TIP 空间，XYZ 不变）和 `stepper`/`kinematic`（PIVOT 空间，XYZ 已偏移）即可确认 RTCP 在工作。
 
-## RTCP 数学公式 (BC 配置)
+## RTCP 数学公式 (BC 配置，含 pivot 偏移)
+
+`pivot_x`, `pivot_y`, `pivot_z` 定义了笔尖在工具坐标系中相对 B/C 旋转中心的偏移向量。`Le = tool_length - pivot_z`。
 
 ### TIP → PIVOT（正向变换，`_apply_rtcp`）
 
 ```
-X_pivot = X_tip - L · sin(B) · cos(C)
-Y_pivot = Y_tip - L · sin(B) · sin(C)
-Z_pivot = Z_tip + L · cos(B)
+X_pivot = X_tip - (px·cos(C)·cos(B) - py·sin(C) + Le·cos(C)·sin(B))
+Y_pivot = Y_tip - (px·cos(B)·sin(C) + py·cos(C) + Le·sin(C)·sin(B))
+Z_pivot = Z_tip + (-px·sin(B) + Le·cos(B))
 ```
 
 ### PIVOT → TIP（逆向变换，`_apply_inverse_rtcp`）
 
 ```
-X_tip = X_pivot + L · sin(B) · cos(C)
-Y_tip = Y_pivot + L · sin(B) · sin(C)
-Z_tip = Z_pivot - L · cos(B)
+X_tip = X_pivot + (px·cos(C)·cos(B) - py·sin(C) + Le·cos(C)·sin(B))
+Y_tip = Y_pivot + (px·cos(B)·sin(C) + py·cos(C) + Le·sin(C)·sin(B))
+Z_tip = Z_pivot + (px·sin(B) - Le·cos(B))
+```
+
+### 简化形式（pivot 全为 0）
+
+当 `pivot_x = pivot_y = pivot_z = 0`，`Le = tool_length`：
+
+```
+X_pivot = X_tip - L·sin(B)·cos(C)
+Y_pivot = Y_tip - L·sin(B)·sin(C)
+Z_pivot = Z_tip + L·cos(B)
+```
+
+## pivot_x / pivot_y — C 轴偏心补偿
+
+`pivot_x` 和 `pivot_y` 定义笔尖在工具坐标系中相对 B/C 旋转中心的偏移向量。
+
+**物理含义**（B=0, C=0 时）：
+- `pivot_x > 0`: 笔尖在旋转中心 X+ 方向
+- `pivot_y > 0`: 笔尖在旋转中心 Y+ 方向（C=0 时笔头朝前）
+
+**C 轴偏心场景**: 笔头从 C 轴旋转中心挪开（偏心安装），当 C 旋转时笔尖绕 C 中心做轨道运动，RTCP 自动通过 pivot_x/pivot_y 补偿。
+
+**校准公式**: 当 C 从 0 旋转到 θ:
+```
+X 位移 = -offset·sin(θ)
+offset = -dx / sin(θ)       (C=30°: offset = -2·dx)
 ```
 
 ## 为什么 G1 B 会移动 XYZB 四个轴

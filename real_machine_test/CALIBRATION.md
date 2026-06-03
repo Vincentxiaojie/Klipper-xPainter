@@ -14,11 +14,12 @@
 Z_tip = Z_pivot - tool_length
 ```
 
-### 两个关键参数
+### 三个关键参数
 
 | 参数 | 含义 | 性质 | 配置位置 |
 |------|------|------|---------|
 | **tool_length** | B 轴旋转中心 → 笔尖的距离 | 机械常数，换笔才变 | `[printer] tool_length` |
+| **pivot_y** | C轴旋转中心 → 笔尖的Y偏移 (C=0时) | 机械常数，笔头偏心时标定 | `[printer] pivot_y` |
 | **Z 零点** | 纸面在机器坐标中的 Z 位置 | 纸张高度决定 | `CALIBRATE_Z_OFFSET` 宏 |
 
 ```
@@ -89,6 +90,38 @@ Z_tip = Z_pivot - tool_length
 
 ---
 
+### 步骤 3：标定 C 轴偏心量（笔头偏心安装时）
+
+**适用场景**: 笔头不在 C 轴旋转中心上（偏心安装），C 轴旋转时
+RTCP 需要补偿 XY 轨道运动。
+
+**何时需要**: 执行 `TEST_RTCP_C_ECCENTRIC` 时纯C变化打点不重合。
+
+**原理**: 如果 pivot_y 不准确:
+- C=0 时笔在原点
+- C=θ 时笔移动到 X = -offset × sin(θ) 位置
+- 测量 X 间距反算偏心量
+
+公式：**pivot_y = -dx / sin(C_angle)**
+
+例如 C=30°: `pivot_y = -dx / 0.5 = -2 × dx`
+
+**操作**：
+1. 执行 `CALIBRATE_C_OFFSET`（归零，B=0，移到中心）
+2. 手动下探触纸后执行 `C_CAL_TOUCH`（自动打 C=0 和 C=30 两个点）
+3. 测量两点 X 间距 dx（点2在点1右边为正，左边为负）
+4. 执行 `C_CAL_REPORT DX=<间距>`
+5. 根据推荐值修改 `printer.cfg` 的 `pivot_y`
+
+**示例**：
+```
+[CAL] X偏差=-5mm  C=30度
+[CAL] 推算偏心量 offset=10.0mm
+[CAL] 推荐 pivot_y = 10.0
+```
+
+---
+
 ## 精度验证
 
 标定完成后，执行以下 G-code 验证 RTCP 精度：
@@ -107,6 +140,18 @@ G1 B0 F400                       # 回到垂直
 
 如果 B=0 和 B=20 打出的点**完全重合**，说明 tool_length 标定准确。若偏移 < 0.5mm 属于正常。
 
+**C 轴偏心验证**：
+```gcode
+G1 C30 F400                      # C 轴旋转 30°
+_PEN_DOWN                         # 应打在同一个点
+_PEN_UP
+G1 C-30 F400                      # C 轴反向旋转
+_PEN_DOWN
+_PEN_UP
+G1 C0 F400
+```
+如果 C=0、C=30、C=-30 打出的点**完全重合**，说明 pivot_y 标定准确。
+
 ---
 
 ## 配置参考
@@ -116,8 +161,8 @@ G1 B0 F400                       # 回到垂直
 kinematics: cartesian_rtcp
 tool_length: 77.8     # ← 步骤1标定出的值
 rotary_config: bc
-pivot_x: 0
-pivot_y: 0
+pivot_x: 0            # ← 步骤3标定 (笔头X偏心)
+pivot_y: 10.0         # ← 步骤3标定 (笔头Y偏心，C轴偏心)
 pivot_z: 0
 
 [save_variables]
@@ -131,6 +176,10 @@ filename: /home/alpha/Klipper-xPainter-data/saved_vars.cfg
 | 宏 | 用途 | 频率 |
 |----|------|------|
 | `CALIBRATE_TOOL_LENGTH` | 启动 tool_length 标定 | 换笔时 |
-| `TOOL_CAL_NEXT` | 记录触纸位置（标定流程中） | 同上 |
+| `TOOL_CAL_TOUCH` | 记录触纸 + 自动打B=0/B=30两点 | 同上 |
+| `TOOL_CAL_REPORT` | 计算推荐 tool_length | 同上 |
+| `CALIBRATE_C_OFFSET` | 启动 C 轴偏心标定 | 笔头偏心时 |
+| `C_CAL_TOUCH` | 自动打C=0/C=30两点 | 同上 |
+| `C_CAL_REPORT` | 计算推荐 pivot_y | 同上 |
 | `CALIBRATE_Z_OFFSET` | 一键保存 Z 零点 | 换纸时 |
 | `_RESTORE_Z_OFFSET` | 恢复 Z 零点（G28 自动调用） | 每次重启 |

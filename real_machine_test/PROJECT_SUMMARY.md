@@ -64,6 +64,7 @@
 | gcode_move 变换链 | RTCP 在 gcode_move 层做变换，toolhead 无感知 |
 | 笔尖弧长速度补偿 | `_adjust_move_d_for_rotary()` — 旋转时自动调整速度预算 |
 | 旋转轴索引适配 | BC 配置自动跳过 A 轴索引 |
+| pivot 偏移补偿 | pivot_x/pivot_y/pivot_z 支持 B/C 旋转中心机械偏差 + C轴偏心 |
 
 ---
 
@@ -92,6 +93,8 @@
 | `test/klippy/rtcp.cfg` | RTCP BC 测试配置 |
 | `test/klippy/rtcp_basic.test` | RTCP 功能验证测试 |
 | `test/klippy/rtcp_pulse.test` | RTCP 五轴联动脉冲精度测试 |
+| `test/klippy/rtcp_pivot.cfg` | RTCP pivot 偏移测试配置 (px=5,py=10) |
+| `test/klippy/rtcp_pivot.test` | RTCP pivot 偏移脉冲精度验证 |
 
 #### 真机测试工具链
 
@@ -106,6 +109,8 @@
 | `real_machine_test/test_03_rtcp_basic.gcode` | 阶段 3: RTCP 基础 |
 | `real_machine_test/test_04_five_axis.gcode` | 阶段 4: 五轴联动 |
 | `real_machine_test/test_05_drawing.gcode` | 阶段 5: 画线测试 |
+| `real_machine_test/xPainter.cfg` | 校准宏 (含 C 轴偏心标定) |
+| `real_machine_test/xPainter_test_marco.cfg` | 渐进式 RTCP 测试宏 (含 C 轴偏心验证) |
 
 ### 3.2 修改文件 (13 个)
 
