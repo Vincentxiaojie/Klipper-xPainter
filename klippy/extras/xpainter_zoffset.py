@@ -27,6 +27,13 @@ class XPainterCalibration:
         # Register commands
         self._register_commands()
 
+        # Read Z endstop position from stepper config (main config, not autosave)
+        try:
+            zconfig = config.getsection('stepper_z')
+            self._z_endstop = zconfig.getfloat('position_endstop', 0.)
+        except Exception:
+            self._z_endstop = 0.
+
         # State tracking for POINT macros (call counting)
         self._point_state = {}  # key -> {'x1','y1','angle','count'}
 
@@ -129,16 +136,6 @@ class XPainterCalibration:
         # The actual restore happens in XP_RESTORE_Z, called by G28 macro
         pass
 
-    def _get_position_endstop_z(self):
-        """Read Z position_endstop from stepper config."""
-        try:
-            cf = self._get_configfile()
-            if cf.fileconfig.has_option('stepper_z', 'position_endstop'):
-                return cf.fileconfig.getfloat('stepper_z', 'position_endstop')
-        except Exception:
-            pass
-        return 0.0
-
     cmd_XP_Z_CAL_help = "Start Z zero calibration"
 
     def cmd_XP_Z_CAL(self, gcmd):
@@ -178,7 +175,7 @@ class XPainterCalibration:
         if self.z_offset == 0.:
             self._respond(gcmd, "Z 零点未标定，请执行 XP_Z_CAL → XP_Z_TOUCH")
             return
-        z_endstop = self._get_position_endstop_z()
+        z_endstop = self._z_endstop
         # z_offset = paper pivot Z (saved by XP_Z_TOUCH)
         # At endstop: gcode Z = z_endstop - z_offset
         # Paper: gcode Z = 0
@@ -189,7 +186,6 @@ class XPainterCalibration:
 
     def cmd_XP_CLEAR_Z_OFFSET(self, gcmd):
         # Reset: Z zero = endstop position
-        z_endstop = self._get_position_endstop_z()
         cf = self._get_configfile()
         cf.set(self.name, 'z_offset', '0.0')
         self.z_offset = 0.0
