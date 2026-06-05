@@ -125,16 +125,30 @@ class CartesianRTCPKinematics:
         # The larger multiplier on retry guarantees endstop coverage even
         # if the first attempt pushed the axis the wrong way (e.g. after
         # FORCE_MOVE when commanded position doesn't match physical).
+        #
+        # Forcepos calculation must account for endstop location:
+        #   positive_dir=True  → endstop at high end → push past it positively
+        #   positive_dir=False → endstop at low end  → push past it negatively
         second_dir = not first_dir
         attempts = [(first_dir, 1.5), (second_dir, 2.5)]
         last_error = None
         for effective_dir, multiplier in attempts:
             forcepos = list(homepos)
             forcepos[pos_idx] = homepos[pos_idx]
+            # Calculate overtravel: push past endstop in the homing direction
+            # Use retract_dist as base, with reasonable minimum
+            overtravel = multiplier * max(
+                hi.retract_dist * 5., abs(position_max - position_min) * 0.3)
             if effective_dir:
-                forcepos[pos_idx] -= multiplier * (hi.position_endstop - position_min)
+                if hi.positive_dir:
+                    forcepos[pos_idx] += overtravel
+                else:
+                    forcepos[pos_idx] -= overtravel
             else:
-                forcepos[pos_idx] += multiplier * (position_max - hi.position_endstop)
+                if hi.positive_dir:
+                    forcepos[pos_idx] -= overtravel
+                else:
+                    forcepos[pos_idx] += overtravel
             tried_manual_retract = False
             while True:
                 try:
