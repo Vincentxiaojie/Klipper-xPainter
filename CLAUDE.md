@@ -1,18 +1,33 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with this repository.
+This file provides guidance to Claude Code when working in the xPainter project workspace. It is the **single source of truth** — the root `CLAUDE.md` is a symlink to this file.
 
-> **跨机器记忆**: `memory/` 目录包含项目进度、设计决策和已知问题的持久化记忆。
-> 在新机器上 clone 后，将这些文件复制或软链接到 `~/.claude/projects/<project-path>/memory/` 目录即可恢复上下文。
+> **跨机器记忆**: `~/.claude/projects/-home-alpha-xpainter/memory/` 包含项目进度、设计决策和用户偏好的持久化记忆。
+> 在新机器上 clone 本仓库后，将 `memory/` 目录内容复制或软链接到 `~/.claude/projects/-home-alpha-xpainter/memory/` 即可恢复上下文。
 
 ## 项目概述
 
-**Klipper-xPainter** — 油画 CNC 五轴 RTCP 系统，基于 Klipper v0.13.0 的 fork。
+**xPainter** — 油画 CNC 五轴 RTCP 控制系统，由两个子项目组成：
 
-- **仓库**: https://github.com/Vincentxiaojie/Klipper-xPainter (私有)
+| 子项目 | 路径 | 仓库 |
+|--------|------|------|
+| Klipper 五轴 fork（本仓库） | `.` | [Klipper-xPainter](https://github.com/Vincentxiaojie/Klipper-xPainter) (私有) |
+| Web 控制台 | `../xpainter-web/` | [xPainter-Web](https://github.com/Vincentxiaojie/xPainter-Web) (私有) |
+
 - **目标**: 3 线性轴 (XYZ) + 2 旋转轴 (BC) 的油画绘制 CNC，支持 RTCP (刀尖跟随)
 - **BC 结构**: B 轴绕 Y 俯仰（笔尖倾斜），C 轴绕 Z 旋转（长方形笔头方向控制）
 - **架构**: MCU 固件（C）+ Klippy 主机（Python），与上游 Klipper 一致
+
+### 同步代码
+
+```bash
+git pull                    # 本仓库 (Klipper-xPainter)
+cd ../xpainter-web && git pull  # Web 控制台
+```
+
+> WSL 环境需确保 git 代理已配置: `git config --global http.proxy http://127.0.0.1:7897`
+
+## Klipper 详细文档
 
 ### 当前状态 (2026-05-26)
 
