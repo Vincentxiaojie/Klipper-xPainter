@@ -149,15 +149,18 @@ class XPainterCalibration:
     cmd_XP_Z_TOUCH_help = "Set current Z position as Z=0"
 
     def cmd_XP_Z_TOUCH(self, gcmd):
-        # Record machine Z coordinate of paper surface
-        z_paper = self._get_current_z()
-        # Apply Z=0 at current position via G92
+        # Record paper surface as PIVOT Z coordinate (endstop-relative).
+        # This value is independent of tool_length — it's the machine
+        # coordinate of the paper, which doesn't change when tool changes.
+        z_pivot = self._get_toolhead().get_position()[2]
+        # Apply Z=0 at current position via G92 (current session only)
         self._run_gcode('G92 Z0')
-        # Persist to config section
+        # Persist pivot Z of paper to config
         cf = self._get_configfile()
-        cf.set(self.name, 'z_offset', '%.3f' % z_paper)
-        self.z_offset = z_paper
-        self._respond(gcmd, "Z 零点已标定，纸面=Z0 (machine Z=%.3f)" % z_paper)
+        cf.set(self.name, 'z_offset', '%.3f' % z_pivot)
+        self.z_offset = z_pivot
+        self._respond(gcmd,
+            "Z 零点已标定，纸面=Z0 (纸面 pivot Z=%.1f)" % z_pivot)
         self._respond(gcmd, "执行 SAVE_CONFIG 持久化到 printer.cfg")
 
     cmd_XP_RESTORE_Z_help = "Restore Z zero after G28 Z homing"
@@ -165,17 +168,22 @@ class XPainterCalibration:
     def cmd_XP_RESTORE_Z(self, gcmd):
         """Restore Z zero after G28 Z completes. Called by G28 macro.
 
-        Moves to paper surface, sets Z=0, then lifts to safe height (Z=30mm).
+        Uses the endstop as a physical reference — no downward movement.
+        At endstop (pivot Z = position_endstop), applies G92 so that
+        the saved paper pivot Z maps to gcode Z=0.
+
+        This means the tool stays at the endstop (highest point) and
+        subsequent G1 Z moves descend safely from a known height.
         """
         if self.z_offset == 0.:
             self._respond(gcmd, "Z 零点未标定，请执行 XP_Z_CAL → XP_Z_TOUCH")
             return
-        # Move to paper surface in gcode/tip space
-        self._run_gcode('G1 Z%.3f F600' % self.z_offset)
-        # Set paper surface = Z=0
-        self._run_gcode('G92 Z0')
-        # Lift to safe height above paper (Z=30mm in gcode space)
-        self._run_gcode('G91\nG1 Z30 F600\nG90')
+        z_endstop = self._get_position_endstop_z()
+        # z_offset = paper pivot Z (saved by XP_Z_TOUCH)
+        # At endstop: gcode Z = z_endstop - z_offset
+        # Paper: gcode Z = 0
+        # Tool stays at endstop, well above paper
+        self._run_gcode('G92 Z%.3f' % (z_endstop - self.z_offset))
 
     cmd_XP_CLEAR_Z_OFFSET_help = "Clear Z offset to zero"
 
