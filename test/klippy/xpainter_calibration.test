@@ -1,0 +1,54 @@
+# Tests for xpainter_zoffset module (XP_* commands)
+DICTIONARY linuxprocess.dict
+CONFIG xpainter_calibration.cfg
+
+# ============================================================
+# Setup: Home all axes first
+# ============================================================
+G28
+STATUS
+M105
+M114
+
+# ============================================================
+# Test 1: Z offset flow
+# ============================================================
+XP_Z_CAL
+XP_Z_TOUCH
+# Move up and down to verify Z axis works after offset
+G1 Z5 F200
+G1 Z0 F200
+XP_CLEAR_Z_OFFSET
+
+# ============================================================
+# Test 2: Tool calibration
+# ============================================================
+XP_TOOL_CAL
+XP_TOOL_TOUCH
+XP_TOOL_POINT
+XP_TOOL_POINT
+XP_TOOL_APPLY
+
+# ============================================================
+# Test 3: Pivot calibration
+# ============================================================
+XP_PIVOT_CAL
+XP_PIVOT_TOUCH
+XP_PIVOT_POINT
+XP_PIVOT_POINT
+XP_PIVOT_APPLY
+
+# ============================================================
+# Test 4: Change Tool workflow
+# ============================================================
+XP_CHANGE_TOOL
+XP_TOOL_READY
+# Only verify it starts — don't complete the flow here
+
+# ============================================================
+# Test 5: APPLY without prior POINT (should warn, not crash)
+# ============================================================
+XP_TOOL_APPLY
+
+# Restart command (must be last)
+RESTART
