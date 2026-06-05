@@ -163,13 +163,19 @@ class XPainterCalibration:
     cmd_XP_RESTORE_Z_help = "Restore Z zero after G28 Z homing"
 
     def cmd_XP_RESTORE_Z(self, gcmd):
-        """Restore Z zero after G28 Z completes. Called by G28 macro."""
+        """Restore Z zero after G28 Z completes. Called by G28 macro.
+
+        Moves to paper surface, sets Z=0, then lifts to safe height (Z=30mm).
+        """
         if self.z_offset == 0.:
             self._respond(gcmd, "Z 零点未标定，请执行 XP_Z_CAL → XP_Z_TOUCH")
             return
-        # Move to paper surface Z then set Z=0
+        # Move to paper surface in gcode/tip space
         self._run_gcode('G1 Z%.3f F600' % self.z_offset)
+        # Set paper surface = Z=0
         self._run_gcode('G92 Z0')
+        # Lift to safe height above paper (Z=30mm in gcode space)
+        self._run_gcode('G91\nG1 Z30 F600\nG90')
 
     cmd_XP_CLEAR_Z_OFFSET_help = "Clear Z offset to zero"
 
