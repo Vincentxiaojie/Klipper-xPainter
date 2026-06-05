@@ -104,13 +104,21 @@ class XPainterCalibration:
         return self.printer.lookup_object('configfile')
 
     def _get_current_xy(self):
-        """Get current toolhead X,Y position (tip space)."""
-        pos = self._get_toolhead().get_position()
+        """Get current X,Y in gcode (tip) coordinate space."""
+        gcode_move = self.printer.lookup_object('gcode_move')
+        pos = gcode_move.get_status()['gcode_position']
         return pos[0], pos[1]
 
     def _get_current_z(self):
-        """Get current toolhead Z position."""
-        return self._get_toolhead().get_position()[2]
+        """Get current Z in gcode (tip) coordinate space.
+
+        Must use gcode position (not toolhead pivot position) because
+        XP_RESTORE_Z issues G1 Z{value} — a gcode-space command.
+        toolhead.get_position() returns pivot coordinates, which differ
+        by tool_length, causing a Z offset error after restore.
+        """
+        gcode_move = self.printer.lookup_object('gcode_move')
+        return gcode_move.get_status()['gcode_position'][2]
 
     # ============================================================
     # Z Offset commands
