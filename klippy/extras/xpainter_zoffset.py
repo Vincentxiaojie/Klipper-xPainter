@@ -157,6 +157,7 @@ class XPainterCalibration:
     def cmd_XP_RESTORE_Z(self, gcmd):
         """Restore Z zero after G28 Z completes. Called by G28 macro."""
         if self.z_offset == 0.:
+            self._respond(gcmd, "Z 零点未标定，请执行 XP_Z_CAL → XP_Z_TOUCH")
             return
         # Move to paper surface Z then set Z=0
         self._run_gcode('G1 Z%.3f F600' % self.z_offset)
