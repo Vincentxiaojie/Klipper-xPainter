@@ -327,7 +327,7 @@ class CartesianRTCPKinematics:
         # tool tip to deviate from its programmed position by up to:
         #   ΔZ = L * (1 - cos(Δθ/2))
         # With tolerance = 0.5mm and L up to ~200mm, a step of ~8° is safe.
-        tolerance = 0.5
+        tolerance = 2.0
         if L > tolerance:
             max_angle = 2.0 * math.degrees(math.acos(1.0 - tolerance / L))
         else:
